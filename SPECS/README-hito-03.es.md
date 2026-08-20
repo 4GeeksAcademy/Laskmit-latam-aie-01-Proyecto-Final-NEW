@@ -4,7 +4,7 @@
 Implementado completamente como app Next.js con App Router para gestionar el pipeline de candidaturas de Nexova.
 
 ## Que se hizo en el proyecto
-- Se completo la app en `apps/talent-pipeline-tracker/` con una UI adaptada al contexto de Nexova.
+- Se completo la app en `uis/talent-pipeline-tracker/` con una UI adaptada al contexto de Nexova.
 - Se implemento la vista principal `/` con:
   - listado de candidaturas
   - filtro por estado usando query param `status`
@@ -47,13 +47,13 @@ Implementado completamente como app Next.js con App Router para gestionar el pip
 - Next.js se configuro con `experimental.externalDir` para permitir el uso del cliente compartido en `Services/` dentro del monorepo.
 
 ## Archivos principales del hito
-- `apps/talent-pipeline-tracker/app/page.tsx`
-- `apps/talent-pipeline-tracker/app/CandidatesPageClient.tsx`
-- `apps/talent-pipeline-tracker/app/candidates/[id]/page.tsx`
-- `apps/talent-pipeline-tracker/components/CandidateForm.tsx`
-- `apps/talent-pipeline-tracker/components/CandidateTable.tsx`
-- `apps/talent-pipeline-tracker/components/CandidateDetailClient.tsx`
-- `apps/talent-pipeline-tracker/types/talentTracker.ts`
-- `apps/talent-pipeline-tracker/lib/formatters.ts`
+- `uis/talent-pipeline-tracker/app/page.tsx`
+- `uis/talent-pipeline-tracker/app/CandidatesPageClient.tsx`
+- `uis/talent-pipeline-tracker/app/candidates/[id]/page.tsx`
+- `uis/talent-pipeline-tracker/components/CandidateForm.tsx`
+- `uis/talent-pipeline-tracker/components/CandidateTable.tsx`
+- `uis/talent-pipeline-tracker/components/CandidateDetailClient.tsx`
+- `uis/talent-pipeline-tracker/types/talentTracker.ts`
+- `uis/talent-pipeline-tracker/lib/formatters.ts`
 - `Services/talentTrackerApi.ts`
-- `apps/talent-pipeline-tracker/next.config.ts`
+- `uis/talent-pipeline-tracker/next.config.ts`

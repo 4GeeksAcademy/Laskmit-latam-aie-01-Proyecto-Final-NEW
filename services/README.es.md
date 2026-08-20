@@ -37,7 +37,7 @@ Debe responder {"status":"ok"}.
 
 **Terminal 3 (frontend web)**
 
-cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final/uis/web
+cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final/uis/incidents-analyzer
 python -m http.server 5500
 
 Importante:

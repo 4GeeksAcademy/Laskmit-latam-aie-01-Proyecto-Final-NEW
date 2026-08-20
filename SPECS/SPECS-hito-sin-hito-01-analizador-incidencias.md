@@ -15,7 +15,7 @@
 │       ├── requirements.txt
 │       └── README.md
 └── uis/
-    └── web/
+    └── incidents-analyzer/
         ├── index.html
         ├── app.js
         ├── styles.css
@@ -53,7 +53,7 @@ En `shared/incidents_analysis.py`:
   - conversion de resultado a filas CSV metrica por fila
 
 ## Especificaciones de frontend
-En `uis/web/index.html` + `uis/web/app.js`:
+En `uis/incidents-analyzer/index.html` + `uis/incidents-analyzer/app.js`:
 - Selector de archivo CSV.
 - Campo de configuracion de API base URL.
 - Boton para analizar (POST a `/api/incidents/analyze`).

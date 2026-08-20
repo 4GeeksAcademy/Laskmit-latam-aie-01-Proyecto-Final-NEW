@@ -7,6 +7,20 @@ const apiBaseUrlInput = document.getElementById('apiBaseUrl');
 const feedbackEl = document.getElementById('feedback');
 const resultsPanel = document.getElementById('resultsPanel');
 
+// ─── Auto‑detect API base URL en Codespaces ─────────────────────────────
+(function detectApiBaseUrl() {
+  // Si estamos en Codespaces, la URL del frontend es algo como:
+  //   https://<name>-5500.preview.app.github.dev
+  // y la API estaría en:
+  //   https://<name>-8000.preview.app.github.dev
+  const match = window.location.hostname.match(/^(.*)-5500\.(.*)$/);
+  if (match) {
+    // Construimos la URL pública reemplazando 5500 por 8000
+    apiBaseUrlInput.value = `https://${match[1]}-8000.${match[2]}`;
+  }
+  // Si no es Codespaces, se queda el valor por defecto http://localhost:8000
+})();
+
 const totalRecordsEl = document.getElementById('totalRecords');
 const validRecordsEl = document.getElementById('validRecords');
 const invalidRecordsEl = document.getElementById('invalidRecords');

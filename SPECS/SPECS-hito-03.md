@@ -2,7 +2,7 @@
 
 ## Estructura de carpetas/archivos
 ```text
-/workspaces/Laskmit-latam-aie-01-Proyecto-Final/apps/talent-pipeline-tracker/
+/workspaces/Laskmit-latam-aie-01-Proyecto-Final/uis/talent-pipeline-tracker/
 ├── app/
 │   ├── CandidatesPageClient.tsx
 │   ├── candidates/
@@ -98,8 +98,8 @@ En `Services/talentTrackerApi.ts`:
 - UI contextualizada para Nexova y la vacante de Asistente de Direccion.
 
 ## Validacion ejecutada
-- `npm run build` en `apps/talent-pipeline-tracker`.
-- `npm run lint` en `apps/talent-pipeline-tracker`.
+- `npm run build` en `uis/talent-pipeline-tracker`.
+- `npm run lint` en `uis/talent-pipeline-tracker`.
 
 ## Criterios de reconocimiento rapido
 - Existe cliente API tipado en `Services/talentTrackerApi.ts`.

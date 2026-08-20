@@ -23,7 +23,7 @@ Implementado y funcional en dos capas:
   - `GET /api/incidents/results/export`
 
 ### Fase 2 (frontend)
-- UI en `uis/web/`:
+- UI en `uis/incidents-analyzer/`:
   - carga de archivo CSV
   - visualizacion de resumen
   - descarga de resultados
@@ -40,7 +40,7 @@ Implementado y funcional en dos capas:
 2. `.venv/bin/uvicorn services.api.main:app --reload --port 8000`
 
 ### 3) Frontend Web (Fase 2)
-1. `cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final/uis/web`
+1. `cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final/uis/incidents-analyzer`
 2. `python -m http.server 5500`
 3. Abrir `http://localhost:5500`
 4. Dejar API base URL en `http://localhost:8000` (o ajustar segun puerto).
@@ -68,6 +68,6 @@ Con `scripts/incidents-nexova.csv` produce:
 - `shared/incidents_analysis.py`
 - `services/api/main.py`
 - `services/api/requirements.txt`
-- `uis/web/index.html`
-- `uis/web/app.js`
-- `uis/web/styles.css`
+- `uis/incidents-analyzer/index.html`
+- `uis/incidents-analyzer/app.js`
+- `uis/incidents-analyzer/styles.css`

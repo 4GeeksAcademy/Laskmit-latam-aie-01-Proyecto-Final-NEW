@@ -15,10 +15,10 @@ ________________________________________
 ## 🌱 Cómo iniciar el proyecto
 Este hito forma parte del monorepo del curso. No necesitas clonar ningún repositorio nuevo — el tuyo ya existe.
 1.	Abre el monorepo en el que has trabajado durante el curso en GitHub Codespaces o clónalo localmente si prefieres trabajar en tu máquina.
-2.	Navega a la carpeta /apps y crea el directorio de este hito:
-/apps/talent-pipeline-tracker/
+2.	Navega a la carpeta /uis y crea el directorio de este hito:
+/uis/talent-pipeline-tracker/
 1.	Inicializa un proyecto Next.js con TypeScript dentro de esa carpeta:
-cd apps/talent-pipeline-tracker
+cd uis/talent-pipeline-tracker
 npx create-next-app@latest . --typescript --app --tailwind --eslint
 1.	Crea un archivo .env.local en la raíz de tu app con la URL base de la API:
 NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
