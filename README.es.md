@@ -1,83 +1,139 @@
-# Proyecto de Compañía - Ingeniería de IA — Plantilla para estudiantes
+# Nexova — Monorepo Corporativo
 
 [![4Geeks Academy](https://img.shields.io/badge/4Geeks-Academy-blue)](https://4geeksacademy.com)
 [![AI Engineering](https://img.shields.io/badge/track-AI%20Engineering-green)](https://4geeksacademy.com/es/programas-de-carrera/ingenieria-ia)
 
-_Plantilla base para proyectos transversales del Programa de Carrera en Ingeniería de IA — 4Geeks Academy._
-
-_Las instrucciones están [disponibles en inglés](./README.md)._
+_Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Academy._
 
 ---
 
-## Propósito
+## Empresa
 
-Este repositorio es la **plantilla de inicio** para los proyectos transversales. Trabajarás con escenarios de empresas reales (Brasaland, TrackFlow, Nexova) construyendo entregables que se corresponden con los hitos del curso (Web, Programación, Backend, Telemetría, RAG, Agentes, Workflows, Tiempo real).
-
-- Crea una plantilla a partir de este repositorio.
-- Reemplaza el `CONTEXT.md` placeholder por el contexto de tu empresa asignada.
-- Usa `skills/` y los `README.md` por carpeta como guía de trabajo.
+**Nexova Solutions** es una consultora de talento con operaciones en selección, soporte externalizado y formación corporativa. Este monorepo integra todos los proyectos desarrollados para Nexova a lo largo del programa.
 
 ---
 
-## Estado actual de la plantilla
+## Proyectos del monorepo
 
-Actualmente el repositorio ofrece una **estructura base de carpetas y documentación**, pero todavía no incluye aplicaciones ejecutables ni scripts globales en la raíz.
-
-- `CONTEXT.md` es un placeholder y debe sustituirse por el contexto de la empresa asignada.
-- No existe todavía un `AGENTS.md` en la raíz.
-- Existe metadata del paquete compartido en `packages/shared/package.json` (`@repo/shared-types`), pero aún no hay runner de workspace en raíz.
+| # | Proyecto | Tecnología | Ubicación | Estado |
+|---|----------|-----------|-----------|--------|
+| **Hito 1** | Web Corporativa | HTML + CSS + JS (vanilla) | `index.html`, `application.html`, `styles.css`, `validation.js` | ✅ |
+| **Hito 2** | Lógica TypeScript | TypeScript | `src/` | ✅ |
+| **Hito 3** | Talent Pipeline Tracker | Next.js 16 + TypeScript | `uis/talent-pipeline-tracker/` | ✅ |
+| **Hito 4** | Infraestructura IA | Next.js + Python + Gobernanza | `uis/website/`, `uis/backoffice/` | ✅ |
+| **Hito 5** | Backend Inventario | FastAPI (documentado) | — | ❌ No implementado |
+| **Sin Hito 01** | Analizador de Incidencias | Python + HTML/JS | `services/api/` + `uis/incidents-analyzer/` | ✅ |
+| **Sin Hito 02** | Directorio de Proveedores | FastAPI + TinyDB | `services/api/` + `uis/backoffice/` | ✅ |
 
 ---
 
 ## Estructura del repositorio
 
 ```text
-ai-engineering-company-project-monorepo/
-├── README.md
-├── README.es.md
-├── CONTEXT.md                # Placeholder a reemplazar con el contexto asignado
-├── agents/                   # Patrones/plantillas de agentes y documentación de tools
-├── data/                     # raw, process, pipelines, eval
-├── docs/                     # Documentación de proyecto y arquitectura
-├── infra/                    # Docker, Terraform, configuraciones de despliegue
-├── internal/                 # CLIs, scripts de migración empaquetados, utilidades internas
-├── mcps/                     # Servidores Model Context Protocol (MCP)
-├── packages/
-│   └── shared/               # Paquete compartido (@repo/shared-types)
-├── scripts/                  # Convenciones/documentación de scripts
-├── services/                 # APIs y workers en segundo plano
-├── shared/                   # Recursos/convenciones compartidas a nivel repo
-├── skills/                   # Skills reutilizables para agentes
-├── uis/                      # Interfaces de usuario (React, Next.js, Streamlit, HTML)
-└── workflows/                # Documentación de automatizaciones/orquestación
+/
+├── README.md / README.es.md   # Documentación del proyecto
+├── AGENTS.md                  # Protocolo operativo para agentes IA
+├── index.html                 # Hito 1 — Sitio corporativo
+├── application.html           # Hito 1 — Formulario de registro
+├── styles.css                 # Hito 1 — Estilos compartidos
+├── validation.js              # Hito 1 — Validación de formulario
+├── src/                       # Hito 2 — Lógica TypeScript (modelos, utilidades)
+├── uis/                       # Interfaces de usuario
+│   ├── website/               #   Hito 4 — Sitio público (Next.js)
+│   ├── backoffice/            #   Hito 4 — Portal interno (Next.js)
+│   ├── talent-pipeline-tracker/  # Hito 3 — Tracker de candidatos (Next.js)
+│   └── incidents-analyzer/    #   Sin Hito 01 — UI del analizador (HTML/JS)
+├── services/
+│   └── api/                   # FastAPI: incidencias + directorio proveedores
+│       ├── main.py
+│       ├── routes/            #   suppliers.py, incidents.py
+│       └── clients/           #   talentTrackerApi.ts (cliente HTTP compartido)
+├── data/
+│   ├── raw/                   # Datos fuente (incidents-nexova.csv)
+│   └── process/               # Resultados procesados (results.csv)
+├── shared/                    # Módulos Python compartidos
+├── scripts/                   # Scripts CLI (analyze.py, etc.)
+├── memory-bank/               # Contexto persistente para agentes
+├── .agents/                   # Reglas y skills para agentes
+├── docs/                      # Documentación de arquitectura
+├── SPECS/                     # Especificaciones por hito
+└── ... (infra/, packages/, skills/, etc.)
 ```
 
 ---
 
 ## Cómo empezar
 
-1. **Usa este repositorio como plantilla** y crea tu propio repo de proyecto.
-2. **Clona** tu repositorio (o ábrelo en Codespaces).
-3. **Reemplaza** `CONTEXT.md` con el contexto completo de tu empresa asignada.
-4. **Revisa** los `README.md` de cada carpeta raíz para entender responsabilidades (`uis/`, `services/`, `data/`, `skills/`, etc.).
-5. **Empieza a implementar** entregables por hito en `uis/` y `services/`, reutilizando `packages/shared/` y `data/` según corresponda.
+### Requisitos
+- **Python 3.11+** para servicios y scripts
+- **Node.js 22+** para apps Next.js
+- **npm** para gestión de dependencias
+
+### 1) Apps Next.js (website, backoffice, talent-pipeline-tracker)
+
+Cada app tiene su propio `package.json`. Para ejecutar:
+
+```bash
+cd uis/<nombre-app>
+npm install    # solo la primera vez
+npm run dev
+```
+
+| App | Puerto típico |
+|-----|--------------|
+| `uis/website` | `3000` |
+| `uis/backoffice` | `3001` |
+| `uis/talent-pipeline-tracker` | `3002` |
+
+### 2) API Backend (FastAPI)
+
+```bash
+cd services/api
+pip install -r requirements.txt
+python -m uvicorn main:app --reload --port 8000 --host 0.0.0.0
+```
+
+### 3) Incidents Analyzer UI
+
+Requiere la API corriendo en `localhost:8000`:
+
+```bash
+cd uis/incidents-analyzer
+python -m http.server 5500
+```
+
+Abrir `http://localhost:5500`, seleccionar `data/raw/incidents-nexova.csv` y analizar.
+
+### 4) Script CLI (analizador de incidencias)
+
+```bash
+python scripts/analyze.py data/raw/incidents-nexova.csv
+```
 
 ---
 
-## Hitos (referencia)
+## Documentación adicional
 
-| Hito | Enfoque       | Entregables típicos                              |
-| ---- | ------------- | ------------------------------------------------ |
-| 0    | Prework       | Configuración del entorno, primeros prompts      |
-| 1    | Web           | Sitio corporativo, formularios, SEO              |
-| 2    | Programación  | Lógica de negocio, puntuación, cálculos          |
-| 3    | UI con IA     | Interfaces generadas con IA                      |
-| 4    | Next.js       | Portales, app de fidelización, UI de operaciones |
-| 5    | Backend       | API central (ubicaciones, menús, ventas, etc.)   |
-| 6    | Telemetría    | Pipeline de datos, dashboards                    |
-| 7    | RAG y memoria | Base de conocimiento semántica, búsqueda         |
-| 8    | Agentes       | Agentes de soporte, onboarding, formación        |
-| 9    | Workflows     | Automatizaciones con n8n                         |
+| Carpeta | Contenido |
+|---------|-----------|
+| `SPECS/` | Especificaciones detalladas de cada hito |
+| `docs/` | Arquitectura y propuestas técnicas |
+| `memory-bank/` | Contexto de negocio, técnico y progreso |
+| `.agents/` | Reglas y skills reutilizables |
+| `AGENTS.md` | Protocolo operativo para desarrollo con IA |
+
+---
+
+## Hitos realizados
+
+| Hito | Descripción |
+|------|-------------|
+| 1 | Web corporativa Nexova con formulario de registro |
+| 2 | Lógica de negocio en TypeScript (modelos, validaciones, búsqueda) |
+| 3 | Talent Pipeline Tracker (Next.js + API playground 4Geeks) |
+| 4 | Infraestructura IA: monorepo AI-ready, agentes, memoria persistente |
+| Sin Hito 01 | Analizador de incidencias (script CLI + API + UI) |
+| Sin Hito 02 | Directorio de proveedores (FastAPI + TinyDB + UI backoffice) |
 | 10   | Tiempo real   | Dashboards en vivo, alertas, streaming           |
 
 ---

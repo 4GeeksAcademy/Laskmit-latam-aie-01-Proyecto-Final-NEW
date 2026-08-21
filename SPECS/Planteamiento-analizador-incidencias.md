@@ -76,5 +76,5 @@ services/
   api/                    ← backend con los endpoints de análisis y exportación
 
 uis/
-  web/                    ← interfaz web con carga de fichero y visualización
+  incidents-analyzer/     ← interfaz web con carga de fichero y visualización
 
