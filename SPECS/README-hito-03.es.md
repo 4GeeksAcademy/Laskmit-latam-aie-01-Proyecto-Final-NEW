@@ -21,7 +21,7 @@ Implementado completamente como app Next.js con App Router para gestionar el pip
   - alta de nota con `POST /records/:id/notes`
   - eliminacion de nota con `DELETE /records/:id/notes/:note_id`
 - Se reorganizo el codigo en `components`, `lib`, `types` y `Services`.
-- Se amplio el cliente API en `Services/talentTrackerApi.ts` con operaciones CRUD y tipos TypeScript.
+- Se amplio el cliente API en `services/api/clients/talentTrackerApi.ts` con operaciones CRUD y tipos TypeScript.
 
 ## Como correrlo
 1. ``
@@ -44,7 +44,7 @@ Implementado completamente como app Next.js con App Router para gestionar el pip
 ## Evidencia de estado actual
 - La app compila correctamente con `npm run build`.
 - El proyecto pasa `npm run lint` sin errores.
-- Next.js se configuro con `experimental.externalDir` para permitir el uso del cliente compartido en `Services/` dentro del monorepo.
+- Next.js se configuro con `experimental.externalDir` para permitir el uso del cliente compartido en `services/api/clients/` dentro del monorepo.
 
 ## Archivos principales del hito
 - `uis/talent-pipeline-tracker/app/page.tsx`
@@ -55,5 +55,5 @@ Implementado completamente como app Next.js con App Router para gestionar el pip
 - `uis/talent-pipeline-tracker/components/CandidateDetailClient.tsx`
 - `uis/talent-pipeline-tracker/types/talentTracker.ts`
 - `uis/talent-pipeline-tracker/lib/formatters.ts`
-- `Services/talentTrackerApi.ts`
+- `services/api/clients/talentTrackerApi.ts`
 - `uis/talent-pipeline-tracker/next.config.ts`

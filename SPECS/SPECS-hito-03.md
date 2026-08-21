@@ -23,7 +23,7 @@
 ├── package.json
 └── CONTEXT-Hito-3-nexova.es.md
 
-/workspaces/Laskmit-latam-aie-01-Proyecto-Final/Services/
+/workspaces/Laskmit-latam-aie-01-Proyecto-Final/services/api/clients/
 └── talentTrackerApi.ts
 ```
 
@@ -51,7 +51,7 @@
   - Define tipos de UI para estado asincrono, filtros, formularios y feedback.
 
 ## API consumida (cliente HTTP)
-En `Services/talentTrackerApi.ts`:
+En `services/api/clients/talentTrackerApi.ts`:
 - Base URL: `https://playground.4geeks.com/tracker/api/v1`
 - Endpoints consumidos:
   - `GET /records?status=&stage=&search=&page=&limit=`
@@ -102,7 +102,7 @@ En `Services/talentTrackerApi.ts`:
 - `npm run lint` en `uis/talent-pipeline-tracker`.
 
 ## Criterios de reconocimiento rapido
-- Existe cliente API tipado en `Services/talentTrackerApi.ts`.
+- Existe cliente API tipado en `services/api/clients/talentTrackerApi.ts`.
 - La vista principal depende de query params y recarga datos en cambios.
 - Existe una ruta dinamica `app/candidates/[id]/page.tsx`.
 - El detalle permite editar candidatura y gestionar notas internas.

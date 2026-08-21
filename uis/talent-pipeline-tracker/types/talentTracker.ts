@@ -1,4 +1,4 @@
-import type { CandidateStage, CandidateStatus } from "../../../Services/talentTrackerApi";
+import type { CandidateStage, CandidateStatus } from "../../../services/api/clients/talentTrackerApi";
 
 export type AsyncState = "idle" | "loading" | "success" | "error";
 

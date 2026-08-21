@@ -27,3 +27,6 @@ package = true
 [tool.setuptools]
 # Módulos sueltos a incluir en el paquete local del servicio.
 py-modules = ["seed", "database", "models", "main"]
+
+# Incluye el módulo routes/ como paquete para que uv lo reconozca.
+packages = ["routes", "routes.*"]

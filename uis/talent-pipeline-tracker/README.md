@@ -69,14 +69,14 @@ uis/talent-pipeline-tracker/
 ```
 
 **Cliente compartido de API:**  
-`Services/talentTrackerApi.ts` (ubicado en la raíz del monorepo, pendiente de migrar a `services/api/clients/` en una fase posterior).
+`services/api/clients/talentTrackerApi.ts` — importado desde las vistas del tracker vía `../../../services/api/clients/talentTrackerApi`.
 
 ---
 
 ## Notas técnicas
 
 - **Framework:** Next.js 16 con App Router y TypeScript.
-- **`next.config.ts`** habilita `experimental.externalDir` para importar el cliente HTTP compartido desde `Services/` (ruta relativa `../../../Services/` desde cualquier archivo dentro de `uis/talent-pipeline-tracker/`).
+- **`next.config.ts`** habilita `experimental.externalDir` para importar el cliente HTTP compartido desde `services/api/clients/` (ruta relativa `../../../services/api/clients/` desde cualquier archivo dentro de `uis/talent-pipeline-tracker/`).
 - La API base se toma de `NEXT_PUBLIC_API_URL` si existe; en caso contrario usa la URL pública del playground de 4Geeks.
 
 ---
