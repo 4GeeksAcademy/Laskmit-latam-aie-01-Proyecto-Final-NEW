@@ -32,7 +32,7 @@ Implementado y funcional en dos capas:
 ## Como correrlo
 ### 1) Script CLI (Fase 1)
 1. `cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final`
-2. `.venv/bin/python scripts/analyze.py scripts/incidents-nexova.csv`
+2. `.venv/bin/python scripts/analyze.py data/raw/incidents-nexova.csv`
 3. Responder `y` o `n` a la exportacion.
 
 ### 2) Backend API (Fase 2)
@@ -47,7 +47,7 @@ Implementado y funcional en dos capas:
 
 ## Como probar que funciona
 ### Validacion del script (comprobado)
-Con `scripts/incidents-nexova.csv` produce:
+Con `data/raw/incidents-nexova.csv` produce:
 - 100 registros totales
 - 96 validos
 - 4 invalidos
@@ -64,7 +64,7 @@ Con `scripts/incidents-nexova.csv` produce:
 
 ## Archivos principales
 - `scripts/analyze.py`
-- `scripts/incidents-nexova.csv`
+- `data/raw/incidents-nexova.csv`
 - `shared/incidents_analysis.py`
 - `services/api/main.py`
 - `services/api/requirements.txt`

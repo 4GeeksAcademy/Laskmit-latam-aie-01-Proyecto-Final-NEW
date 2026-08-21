@@ -54,7 +54,7 @@ Abre el puerto 5500 en el navegador (Open in Browser).
 
 En esa pantalla, en API base URL, pega la URL pública del puerto 8000 desde Ports, sustituyendo la que estaba en el campo.  Asegurarse que que la url que estaba allí no quede pegada al final.
 
-Sube el archivo incidents-nexova.csv y pulsa Analizar archivo.
+Sube el archivo incidents-nexova.csv (ubicado en `data/raw/incidents-nexova.csv`) y pulsa Analizar archivo.
 
 
 

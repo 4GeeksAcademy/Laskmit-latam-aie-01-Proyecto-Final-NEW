@@ -3,10 +3,14 @@
 ## Estructura de carpetas/archivos
 ```text
 /workspaces/Laskmit-latam-aie-01-Proyecto-Final/
+├── data/
+│   ├── raw/
+│   │   └── incidents-nexova.csv
+│   └── process/
+│       ├── results.csv
+│       └── results-Fase-1.csv
 ├── scripts/
-│   ├── analyze.py
-│   ├── incidents-nexova.csv
-│   └── results-Fase-1.csv
+│   └── analyze.py
 ├── shared/
 │   └── incidents_analysis.py
 ├── services/

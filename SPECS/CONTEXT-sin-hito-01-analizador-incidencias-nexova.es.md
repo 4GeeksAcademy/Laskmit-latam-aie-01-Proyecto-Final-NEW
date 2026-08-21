@@ -112,7 +112,7 @@ Promedio: **3.84**
 
 ## Salida esperada
 
-Cuando el estudiante ejecute `python analyze.py incidents-nexova.csv` con el archivo provisto, la salida en consola debe mostrar los siguientes valores:
+Cuando el estudiante ejecute `python analyze.py data/raw/incidents-nexova.csv` con el archivo provisto, la salida en consola debe mostrar los siguientes valores:
 
 ```
 ============================================================

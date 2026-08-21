@@ -42,8 +42,8 @@ python -m http.server 5500
 1. Asegúrate de que ambos servidores estén corriendo (Terminal 1 + Terminal 2).
 2. Abre `http://localhost:5500` (o la URL pública del puerto 5500 en Codespaces).
 3. Verifica que el campo **API base URL** tenga la URL correcta.
-4. Selecciona un archivo CSV de incidencias **(ej: `scripts/incidents-nexova.csv`)**.
-   > ⚠️ No uses `results.csv` de la raíz — ese es un archivo de resultados, no de entrada.
+4. Selecciona un archivo CSV de incidencias **(ej: `data/raw/incidents-nexova.csv`)**.
+   > ⚠️ No uses `data/process/results.csv` — ese es un archivo de resultados, no de entrada.
 5. Haz clic en **Analizar archivo** — debe mostrar el resumen con métricas.
 6. Haz clic en **Descargar CSV** para exportar los resultados.
 
