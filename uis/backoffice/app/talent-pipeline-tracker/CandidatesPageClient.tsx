@@ -11,14 +11,14 @@ import {
   listCandidateRecords,
   STAGE_LABELS,
   STATUS_LABELS,
-} from "../../../services/api/clients/talentTrackerApi";
-import { CandidateForm } from "@/components/CandidateForm";
-import { CandidateTable } from "@/components/CandidateTable";
+} from "../../../../services/api/clients/talentTrackerApi";
+import { CandidateForm } from "./components/CandidateForm";
+import { CandidateTable } from "./components/CandidateTable";
 import {
   type AsyncState,
   EMPTY_CANDIDATE_FORM_VALUES,
   type OperationFeedback,
-} from "@/types/talentTracker";
+} from "./types/talentTracker";
 
 const STATUS_VALUES = Object.keys(STATUS_LABELS) as CandidateStatus[];
 const STAGE_VALUES = Object.keys(STAGE_LABELS) as CandidateStage[];

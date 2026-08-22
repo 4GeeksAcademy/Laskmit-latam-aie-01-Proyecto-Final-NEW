@@ -16,14 +16,14 @@ import {
   type CandidateRecordInput,
   type CandidateStage,
   type CandidateStatus,
-} from "../../../services/api/clients/talentTrackerApi";
-import { CandidateForm } from "@/components/CandidateForm";
-import { formatDateTime, formatExperienceYears } from "@/lib/formatters";
+} from "../../../../services/api/clients/talentTrackerApi";
+import { CandidateForm } from "./CandidateForm";
+import { formatDateTime, formatExperienceYears } from "../lib/formatters";
 import {
   type AsyncState,
   type CandidateFormValues,
   type OperationFeedback,
-} from "@/types/talentTracker";
+} from "../types/talentTracker";
 
 const STATUS_VALUES = Object.keys(STATUS_LABELS) as CandidateStatus[];
 const STAGE_VALUES = Object.keys(STAGE_LABELS) as CandidateStage[];

@@ -15,9 +15,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nexova Backoffice | Talent Pipeline",
+  title: "Nexova Backoffice",
   description:
-    "Aplicacion interna de Nexova para operar y visualizar la logica de negocio de talento.",
+    "Aplicacion interna de Nexova para operar y visualizar la logica de negocio.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -33,6 +33,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <nav>
               <Link href="/">Inicio</Link>
               <Link href="/suppliers">Suppliers</Link>
+              <Link href="/talent-pipeline-tracker">Talent Pipeline</Link>
+              <Link href="/incidents-analyzer">Incidencias</Link>
             </nav>
           </div>
         </header>

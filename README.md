@@ -13,15 +13,27 @@ _Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Ac
 
 ---
 
-## Documentación adicional
+## Estructura del repositorio
 
 | Carpeta | Contenido |
 |---------|-----------|
+| `uis/backoffice/` | Aplicación Next.js principal — Backoffice interno de Nexova |
+| `uis/backoffice/app/` | Rutas y páginas del backoffice |
+| `uis/backoffice/app/suppliers/` | Directorio de proveedores |
+| `uis/backoffice/app/talent-pipeline-tracker/` | Pipeline de candidaturas (People & Talent) |
+| `uis/backoffice/app/incidents-analyzer/` | Analizador de incidencias de soporte |
+| `uis/website/` | Sitio web público de Nexova |
+| `services/api/` | API backend (FastAPI) |
+| `services/api/clients/` | Clientes API reutilizados por los frontends |
+| `scripts/` | Utilidades y análisis de datos |
+| `data/` | Datos de entrada, resultados y pipelines ETL |
+| `infra/` | Configuración de infraestructura |
+| `packages/shared/` | Tipos y utilidades compartidas |
 | `SPECS/` | Tareas a realizar |
-| `SPECS/obsoletos` | documentación de tareas obsoletas. No leer |
+| `SPECS/obsoletos` | Documentación de tareas obsoletas. No leer |
 | `docs/` | Arquitectura y propuestas técnicas |
 | `memory-bank/` | Contexto de negocio, técnico y progreso |
-| `.agents/` | Reglas y skills reutilizables |
+| `agents/` | Reglas y skills reutilizables |
 | `AGENTS.md` | Protocolo operativo para desarrollo con IA |
 
 ---
