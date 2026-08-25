@@ -38,17 +38,82 @@ _Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Ac
 
 ---
 
-## Links
+## Desarrollo
 
-- [4Geeks Academy — AI Engineering](https://4geeksacademy.com/es/programas-de-carrera/ingenieria-ia)
-- [How to start a coding project](https://4geeks.com/lesson/how-to-start-a-project)
+### Requisitos previos
 
----
+- **Python 3.11+** y [uv](https://docs.astral.sh/uv/) (gestor de paquetes Python)
+- **Node.js 20+** y npm
 
-## Contributors
+### 1. Backend — API (FastAPI)
 
-This template was built as part of the 4Geeks Academy AI Engineering Career Program by [@marcogonzalo](https://www.linkedin.com/in/marcogonzalo) and [@alezanchezr](https://x.com/alesanchezr) and many other contributors. Find out more about our [AI Engineering Course](https://4geeksacademy.com/en/career-programs/ai-engineering), and [other courses](https://4geeksacademy.com/en/program-comparison).
+El backend expone los endpoints de proveedores y analizador de incidencias.
 
-You can find other templates and resources like this at the [4Geeks Academy GitHub page](https://github.com/4geeksacademy).
+```bash
+# Ir al directorio del servicio
+cd services/api
 
-_This template is maintained by 4Geeks Academy for the AI Engineering track. For exclusive use in the programme._
+# Instalar dependencias
+pip install -r requirements.txt
+# o con uv:
+# uv sync
+
+# Iniciar servidor en modo desarrollo
+python -m uvicorn main:app --reload --port 8000
+```
+
+> La API queda disponible en **http://localhost:8000**.
+>
+> En Codespaces, haz público el puerto 8000 desde la pestaña **Puertos** → Port Visibility → Public.
+
+Documentación interactiva de los endpoints:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### 2. Frontend — Backoffice (Next.js)
+
+Aplicación principal de administración interna de Nexova.
+
+```bash
+cd uis/backoffice
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+```
+
+> El backoffice se abre en **http://localhost:3000**.
+>
+> Para cambiar el puerto: `npm run dev -- --port 3001`
+
+La URL base de la API se configura mediante la variable de entorno `NEXT_PUBLIC_API_BASE_URL`. Por defecto apunta a `http://localhost:8000`.
+
+### 3. Frontend — Sitio Web Público (Next.js)
+
+```bash
+cd uis/website
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+```
+
+> El sitio web se abre en **http://localhost:3001** (o el puerto que se asigne al ejecutarlo junto al backoffice).
+>
+> Para usar un puerto específico: `npm run dev -- --port 3001`
+
+### Resumen de puertos
+
+| Servicio | Puerto por defecto | Comando de inicio |
+|----------|-------------------|-------------------|
+| API (FastAPI) | `8000` | `cd services/api && python -m uvicorn main:app --reload --port 8000` |
+| Backoffice (Next.js) | `3000` | `cd uis/backoffice && npm run dev` |
+| Sitio web (Next.js) | `3000` * | `cd uis/website && npm run dev` |
+
+\* Al ejecutar ambos frontends simultáneamente, asigna puertos distintos con `npm run dev -- --port <puerto>`.
+
+
