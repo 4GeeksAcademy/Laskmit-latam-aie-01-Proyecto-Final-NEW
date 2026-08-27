@@ -16,7 +16,7 @@ export function Hero() {
             que buscan acelerar contrataciones clave y fortalecer sus equipos.
           </p>
           <div className={styles.heroCtas}>
-            <a className={styles.primaryButton} href="/application.html">
+            <a className={styles.primaryButton} href="/registro">
               Unete a nuestro banco de talento
             </a>
             <span>Estrategia de talento para companias en expansion</span>

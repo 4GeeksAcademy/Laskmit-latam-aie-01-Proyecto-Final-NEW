@@ -1,0 +1,348 @@
+.page {
+  background:
+    radial-gradient(circle at 18% 14%, #244f68 0%, transparent 42%),
+    radial-gradient(circle at 82% 6%, #378a6f 0%, transparent 34%),
+    linear-gradient(160deg, #f5f9fc 0%, #edf7f2 50%, #f2f3f8 100%);
+  color: #122130;
+  min-height: 100vh;
+}
+
+.container {
+  margin: 0 auto;
+  max-width: 1120px;
+  width: 92%;
+}
+
+/* Hero de la página de registro */
+.registroHero {
+  background: linear-gradient(145deg, #071823 0%, #123449 55%, #0c2f3e 100%);
+  color: #f4fbff;
+  padding: 3.5rem 0 2.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.registroHeroGlow {
+  border-radius: 999px;
+  filter: blur(70px);
+  position: absolute;
+  background: rgba(78, 201, 183, 0.4);
+  height: 17rem;
+  left: -4rem;
+  top: 2rem;
+  width: 17rem;
+}
+
+.registroHero h1 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-weight: 700;
+  position: relative;
+}
+
+.registroHero p {
+  margin-top: 0.6rem;
+  color: #b5d7e8;
+  font-size: 0.95rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  line-height: 1.5;
+}
+
+/* Tarjeta del formulario */
+.formCard {
+  margin: -1.5rem auto 3rem;
+  max-width: 720px;
+  width: 92%;
+  background: #ffffff;
+  border-radius: 1.2rem;
+  border: 1px solid #d8e7eb;
+  position: relative;
+  z-index: 2;
+}
+
+.formCardInner {
+  padding: 2rem;
+}
+
+.formCardHeader {
+  border-bottom: 1px solid #e3edf5;
+  padding-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.formCardHeader .kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1f6b8a;
+}
+
+.formCardHeader h2 {
+  margin-top: 0.3rem;
+  font-size: 1.15rem;
+  color: #15354f;
+}
+
+.formCardHeader p {
+  margin-top: 0.3rem;
+  font-size: 0.84rem;
+  color: #59758f;
+  line-height: 1.5;
+}
+
+/* Aviso para empresas */
+.empresaAviso {
+  border-radius: 0.7rem;
+  border: 1px solid #f0d9a0;
+  background: #fef9ec;
+  color: #6b5200;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.84rem;
+  margin-bottom: 1.2rem;
+}
+
+.empresaAviso a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Formulario */
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.formGroup {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.formGroup label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #28445b;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+  color: #122130;
+  width: 100%;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #1f6b8a;
+  box-shadow: 0 0 0 2px rgba(31, 107, 138, 0.2);
+}
+
+.fieldError {
+  font-size: 0.78rem;
+  color: #b91c1c;
+}
+
+/* Radio group */
+.radioGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.84rem;
+  color: #28445b;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.radioOption:hover {
+  border-color: #1f6b8a;
+}
+
+.radioOption input {
+  accent-color: #1f6b8a;
+  margin: 0;
+}
+
+/* Checkbox */
+.checkboxGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  border-radius: 0.6rem;
+  border: 1px solid #d8e7eb;
+  background: #f8fafc;
+  padding: 0.7rem;
+  font-size: 0.84rem;
+  color: #28445b;
+}
+
+.checkboxGroup input {
+  margin-top: 0.15rem;
+  accent-color: #1f6b8a;
+  flex-shrink: 0;
+}
+
+/* Contador */
+.charCounter {
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #59758f;
+}
+
+/* Botones de acción */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.submitBtn {
+  border: 1px solid #1f6b8a;
+  border-radius: 0.65rem;
+  background: #1f6b8a;
+  color: #ffffff;
+  padding: 0.55rem 1.5rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.submitBtn:hover {
+  background: #154a63;
+}
+
+.submitBtn:disabled {
+  background: #8aaec9;
+  border-color: #8aaec9;
+  cursor: not-allowed;
+}
+
+.resetBtn {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #486681;
+  padding: 0.55rem 1.5rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.resetBtn:hover {
+  background: #f5faff;
+}
+
+/* Feedback */
+.success,
+.error,
+.info {
+  margin-top: 0.75rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+}
+
+.success {
+  background: #e7f6ea;
+  border: 1px solid #bde8c6;
+  color: #17562b;
+}
+
+.error {
+  background: #ffe6e6;
+  border: 1px solid #ffb8b8;
+  color: #7a1f1f;
+}
+
+.info {
+  background: #e4f1fd;
+  border: 1px solid #b8d8f0;
+  color: #1a5276;
+}
+
+/* Success box */
+.successBox {
+  text-align: center;
+  padding: 2rem;
+}
+
+.successBox h2 {
+  font-size: 1.3rem;
+  color: #15354f;
+  margin-bottom: 0.5rem;
+}
+
+.successBox p {
+  color: #59758f;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: 500px;
+  margin: 0.5rem auto;
+}
+
+.backBtn {
+  display: inline-flex;
+  margin-top: 1rem;
+  border: 1px solid #1f6b8a;
+  border-radius: 0.65rem;
+  background: #1f6b8a;
+  color: #ffffff;
+  padding: 0.55rem 1.5rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.backBtn:hover {
+  background: #154a63;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .radioGroup {
+    grid-template-columns: 1fr;
+  }
+
+  .formCardInner {
+    padding: 1.2rem;
+  }
+}

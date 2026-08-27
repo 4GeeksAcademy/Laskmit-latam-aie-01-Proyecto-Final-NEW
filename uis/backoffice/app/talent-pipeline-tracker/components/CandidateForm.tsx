@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { CandidateRecordInput } from "../../../../services/api/clients/talentTrackerApi";
+import type { CandidateRecordInput } from "../../../../../services/api/clients/talentTrackerApi";
 import type {
   CandidateFormValues,
   OperationFeedback,
 } from "../types/talentTracker";
+import styles from "../talent-pipeline.module.css";
 
 interface CandidateFormProps {
   title: string;
@@ -91,16 +92,10 @@ function toPayload(values: CandidateFormValues): CandidateRecordInput {
   };
 }
 
-function feedbackClasses(tone: OperationFeedback["tone"]): string {
-  if (tone === "success") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  }
-
-  if (tone === "info") {
-    return "border-sky-200 bg-sky-50 text-sky-800";
-  }
-
-  return "border-rose-200 bg-rose-50 text-rose-800";
+function feedbackClass(tone: OperationFeedback["tone"]): string {
+  if (tone === "success") return "success";
+  if (tone === "info") return "info";
+  return "error";
 }
 
 export function CandidateForm({
@@ -145,116 +140,101 @@ export function CandidateForm({
   };
 
   return (
-    <section className="rounded-[28px] border border-slate-200 bg-white/90 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur">
-      <header className="mb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+    <section className={styles.card}>
+      <header style={{ marginBottom: "0.8rem" }}>
+        <p style={{ textTransform: "uppercase", letterSpacing: "0.12em", fontSize: "0.72rem", fontWeight: 700, color: "#4b6b86" }}>
           Nexova Talent Desk
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+        <h2 style={{ marginTop: "0.3rem", fontSize: "1rem", color: "#15354f" }}>{title}</h2>
+        <p style={{ marginTop: "0.3rem", fontSize: "0.84rem", color: "#59758f", lineHeight: 1.5 }}>{description}</p>
       </header>
 
       {feedback && (
-        <p className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${feedbackClasses(feedback.tone)}`}>
+        <p className={styles[feedbackClass(feedback.tone)]}>
           {feedback.message}
         </p>
       )}
 
-      <form className="grid gap-4" onSubmit={handleSubmit}>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <label>
           Nombre completo
           <input
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
             value={values.full_name}
             onChange={(event) => handleFieldChange("full_name", event.target.value)}
             placeholder="Ej: Ana Garcia"
           />
-          {errors.full_name && <span className="text-xs text-rose-700">{errors.full_name}</span>}
+          {errors.full_name && <span className={styles.formError}>{errors.full_name}</span>}
         </label>
 
-        <div className="grid gap-4">
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Email
-            <input
-              className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-              type="email"
-              value={values.email}
-              onChange={(event) => handleFieldChange("email", event.target.value)}
-              placeholder="nombre@correo.com"
-            />
-            {errors.email && <span className="text-xs text-rose-700">{errors.email}</span>}
-          </label>
+        <label>
+          Email
+          <input
+            type="email"
+            value={values.email}
+            onChange={(event) => handleFieldChange("email", event.target.value)}
+            placeholder="nombre@correo.com"
+          />
+          {errors.email && <span className={styles.formError}>{errors.email}</span>}
+        </label>
 
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Telefono
-            <input
-              className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-              value={values.phone}
-              onChange={(event) => handleFieldChange("phone", event.target.value)}
-              placeholder="+34 600 000 000"
-            />
-            {errors.phone && <span className="text-xs text-rose-700">{errors.phone}</span>}
-          </label>
-        </div>
+        <label>
+          Telefono
+          <input
+            value={values.phone}
+            onChange={(event) => handleFieldChange("phone", event.target.value)}
+            placeholder="+34 600 000 000"
+          />
+          {errors.phone && <span className={styles.formError}>{errors.phone}</span>}
+        </label>
 
-        <div className="grid gap-4">
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Puesto
-            <input
-              className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-              value={values.position}
-              onChange={(event) => handleFieldChange("position", event.target.value)}
-              placeholder="Asistente de Dirección"
-            />
-            {errors.position && <span className="text-xs text-rose-700">{errors.position}</span>}
-          </label>
+        <label>
+          Puesto
+          <input
+            value={values.position}
+            onChange={(event) => handleFieldChange("position", event.target.value)}
+            placeholder="Asistente de Dirección"
+          />
+          {errors.position && <span className={styles.formError}>{errors.position}</span>}
+        </label>
 
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Anos de experiencia
-            <input
-              className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-              type="number"
-              min="0"
-              step="0.5"
-              value={values.experience_years}
-              onChange={(event) => handleFieldChange("experience_years", event.target.value)}
-              placeholder="3"
-            />
-            {errors.experience_years && (
-              <span className="text-xs text-rose-700">{errors.experience_years}</span>
-            )}
-          </label>
-        </div>
+        <label>
+          Anos de experiencia
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={values.experience_years}
+            onChange={(event) => handleFieldChange("experience_years", event.target.value)}
+            placeholder="3"
+          />
+          {errors.experience_years && (
+            <span className={styles.formError}>{errors.experience_years}</span>
+          )}
+        </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label>
           LinkedIn
           <input
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
             value={values.linkedin_url}
             onChange={(event) => handleFieldChange("linkedin_url", event.target.value)}
             placeholder="https://linkedin.com/in/..."
           />
           {errors.linkedin_url && (
-            <span className="text-xs text-rose-700">{errors.linkedin_url}</span>
+            <span className={styles.formError}>{errors.linkedin_url}</span>
           )}
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label>
           Enlace al CV
           <input
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
             value={values.cv_url}
             onChange={(event) => handleFieldChange("cv_url", event.target.value)}
             placeholder="https://.../cv.pdf"
           />
-          {errors.cv_url && <span className="text-xs text-rose-700">{errors.cv_url}</span>}
+          {errors.cv_url && <span className={styles.formError}>{errors.cv_url}</span>}
         </label>
 
-        <button
-          className="mt-2 inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          type="submit"
-          disabled={isSubmitting}
-        >
+        <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando..." : submitLabel}
         </button>
       </form>

@@ -55,6 +55,14 @@ export default function IncidentsAnalyzerPage() {
       5: "Muy satisfecho",
     };
 
+    // ─── Auto‑detect API base URL en Codespaces ─────────────────────────────
+    (function detectApiBaseUrl() {
+      const match = window.location.hostname.match(/^(.*)-\d+\.(.*)$/);
+      if (match) {
+        apiBaseUrlInput.value = `https://${match[1]}-8000.${match[2]}`;
+      }
+    })();
+
     function clearFeedback() {
       feedbackEl.textContent = "";
       feedbackEl.classList.remove("error");

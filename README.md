@@ -66,6 +66,12 @@ python -m uvicorn main:app --reload --port 8000
 >
 > En Codespaces, haz público el puerto 8000 desde la pestaña **Puertos** → Port Visibility → Public.
 
+> **Poblar la base de datos:** La primera vez, ejecuta el seeder para cargar los 15 proveedores predefinidos:
+> ```bash
+> cd services/api && python seed.py
+> ```
+> Cada vez que borres la base de datos o clonés el repositorio, tendrás que volver a ejecutarlo.
+
 Documentación interactiva de los endpoints:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
@@ -88,7 +94,25 @@ npm run dev
 >
 > Para cambiar el puerto: `npm run dev -- --port 3001`
 
-La URL base de la API se configura mediante la variable de entorno `NEXT_PUBLIC_API_BASE_URL`. Por defecto apunta a `http://localhost:8000`.
+### Configuración de variables de entorno
+
+Crea un archivo `.env.local` en `uis/backoffice/` con las URLs de las APIs que necesita cada módulo:
+
+```bash
+# API del Talent Pipeline Tracker (playground 4Geeks)
+NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
+
+# API del Backend local (FastAPI) para Suppliers e Incidencias
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+Cada módulo usa la variable que le corresponde sin necesidad de cambios manuales:
+
+| Módulo | Variable | API |
+|--------|----------|-----|
+| Talent Pipeline Tracker | `NEXT_PUBLIC_API_URL` | playground.4geeks.com |
+| Suppliers | `NEXT_PUBLIC_API_BASE_URL` | localhost:8000 (FastAPI) |
+| Incidencias | input en pantalla | localhost:8000 (FastAPI) |
 
 ### 3. Frontend — Sitio Web Público (Next.js)
 
