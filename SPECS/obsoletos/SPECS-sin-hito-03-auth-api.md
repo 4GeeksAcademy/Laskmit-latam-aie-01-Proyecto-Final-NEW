@@ -63,7 +63,9 @@ uv add "python-jose[cryptography]" "libpass[bcrypt]"
 
 ### Esquemas de request/response (Pydantic)
 
-- **`UserCreate`**: `email`, `password`, `role` (opcional, default `"user"`). Además acepta campos opcionales de perfil: `name`, `phone`, `address` (si se incluyen, crea el Profile vinculado en la misma operación).
+- **`UserCreate`**: `email`, `password`. Además acepta campos opcionales de perfil: `name`, `phone`, `address` (si se incluyen, crea el Profile vinculado en la misma operación).
+  - **No acepta `role`**. Aunque el cliente envíe un campo `role` en el body, este es ignorado. El rol siempre se asigna como `"user"` forzosamente.
+  - La única forma de crear usuarios `admin` o `manager` es que un admin existente los promocione vía `PUT /users/{id}`.
 - **`UserResponse`**: `id`, `email`, `is_active`, `role`, `created_at`.
 - **`UserUpdate`**: `email` (opcional), `role` (opcional, solo admin puede cambiarlo).
 - **`ProfileCreate`**: `user_id`, `name`, `phone`, `address`.
@@ -95,7 +97,7 @@ uv add "python-jose[cryptography]" "libpass[bcrypt]"
 
 #### `POST /users`
 - **Público** (no requiere autenticación).
-- Acepta `UserCreate`.
+- Acepta `UserCreate` con `email` y `password`. No acepta `role`; incluso si se envía en el body, se ignora y se fuerza `"user"`.
 - Valida que el email no exista ya en TinyDB.
 - Hashea la contraseña con bcrypt antes de guardar.
 - Si se incluyen `name`, `phone` o `address`, crea el `Profile` vinculado en la misma transacción.
