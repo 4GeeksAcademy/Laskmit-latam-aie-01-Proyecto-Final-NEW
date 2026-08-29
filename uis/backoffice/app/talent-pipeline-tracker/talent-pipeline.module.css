@@ -1,0 +1,577 @@
+/* Layout general — réplica del estilo de Suppliers */
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #173247 0%, #173247 20%, #f2f6fb 20%, #f2f6fb 100%);
+  padding: 2rem 0 3rem;
+}
+
+.content {
+  margin: 0 auto;
+  max-width: 1480px;
+  width: 97%;
+  display: grid;
+  gap: 1rem;
+}
+
+/* Cabecera contextual */
+.header {
+  color: #e7f4ff;
+  border: 1px solid rgba(195, 225, 244, 0.32);
+  border-radius: 1rem;
+  background: rgba(17, 51, 77, 0.7);
+  padding: 1.2rem;
+}
+
+.kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #89d4f4;
+}
+
+.header h1 {
+  margin-top: 0.4rem;
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+}
+
+.header p {
+  margin-top: 0.5rem;
+  color: #c2dfef;
+}
+
+/* Grid principal: tabla a la izquierda, formulario a la derecha */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: 1rem;
+}
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid #d3e4f1;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.card h2 {
+  font-size: 1rem;
+  color: #15354f;
+}
+
+/* Tarjetas de resumen (estadísticas) */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.summaryCard {
+  border-radius: 0.85rem;
+  border: 1px solid #d3e4f1;
+  background: #ffffff;
+  padding: 0.9rem 1rem;
+}
+
+.summaryCard p:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4b6b86;
+}
+
+.summaryCard p:last-child {
+  margin-top: 0.3rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #15354f;
+}
+
+/* Filtros */
+.filtersRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filtersRow label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.84rem;
+  color: #486681;
+}
+
+.filtersRow input,
+.filtersRow select {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+/* Feedback messages */
+.error,
+.success,
+.loading,
+.info {
+  margin-top: 0.75rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+}
+
+.error {
+  background: #ffe6e6;
+  border: 1px solid #ffb8b8;
+  color: #7a1f1f;
+}
+
+.success {
+  background: #e7f6ea;
+  border: 1px solid #bde8c6;
+  color: #17562b;
+}
+
+.loading {
+  background: #edf3f7;
+  border: 1px solid #d6e3ec;
+  color: #41617b;
+}
+
+.info {
+  background: #e4f1fd;
+  border: 1px solid #b8d8f0;
+  color: #1a5276;
+}
+
+/* Tabla */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  border-bottom: 1px solid #e3edf5;
+  padding: 0.65rem 0.45rem;
+  vertical-align: middle;
+  font-size: 0.88rem;
+}
+
+.table th {
+  color: #4b6b86;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table tr:hover td {
+  background: #f5faff;
+}
+
+/* Badges de estado y etapa */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badgeStage {
+  background: #e8f7ec;
+  color: #1d6b35;
+  border: 1px solid #b6e2c2;
+}
+
+.badgeStatus {
+  background: #edf3f7;
+  color: #38566f;
+  border: 1px solid #d6e3ec;
+}
+
+/* Botón de detalle (link) */
+.detailLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  border: 1px solid #c6d9e8;
+  background: #ffffff;
+  color: #486681;
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.detailLink:hover {
+  background: #f5faff;
+  border-color: #89d4f4;
+  color: #1f4f73;
+}
+
+/* Formulario */
+.form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.84rem;
+  color: #486681;
+}
+
+.form input,
+.form select,
+.form textarea {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.form button {
+  border: 1px solid #1f4f73;
+  border-radius: 0.65rem;
+  background: #1f4f73;
+  color: #ffffff;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+
+.form button:hover {
+  background: #14354d;
+}
+
+.form button:disabled {
+  background: #8aaec9;
+  border-color: #8aaec9;
+  cursor: not-allowed;
+}
+
+.formError {
+  color: #7a1f1f;
+  font-size: 0.78rem;
+}
+
+/* Detalle de candidatura */
+.detailHeader {
+  border-radius: 1rem;
+  border: 1px solid #d3e4f1;
+  background: #ffffff;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.detailHeaderInner p:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4b6b86;
+}
+
+.detailHeaderInner h1 {
+  margin-top: 0.3rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #15354f;
+}
+
+.detailHeaderInner p:last-child {
+  margin-top: 0.3rem;
+  font-size: 0.84rem;
+  color: #59758f;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  height: 2.4rem;
+  padding: 0 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #c6d9e8;
+  background: #ffffff;
+  color: #486681;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.backLink:hover {
+  background: #f5faff;
+  border-color: #89d4f4;
+  color: #1f4f73;
+}
+
+/* Grid del detalle (info + edit) */
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr;
+  gap: 1rem;
+}
+
+/* Sección de información del detalle */
+.detailSection {
+  border-radius: 1rem;
+  border: 1px solid #d3e4f1;
+  background: #ffffff;
+  padding: 1.2rem;
+}
+
+.detailNameRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border-bottom: 1px solid #e3edf5;
+  padding-bottom: 1rem;
+}
+
+.detailNameRow h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #15354f;
+}
+
+.detailNameRow p {
+  margin-top: 0.2rem;
+  font-size: 0.88rem;
+  color: #59758f;
+}
+
+.detailBadges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* Grid de campos del detalle */
+.detailFields {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.detailField {
+  border-radius: 0.7rem;
+  border: 1px solid #e3edf5;
+  background: #f8fafc;
+  padding: 0.7rem;
+}
+
+.detailField p:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #4b6b86;
+}
+
+.detailField p:last-child,
+.detailField a {
+  margin-top: 0.25rem;
+  font-size: 0.84rem;
+  color: #1a2d3d;
+}
+
+.detailField a {
+  color: #1f4f73;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.detailField a:hover {
+  color: #89d4f4;
+}
+
+/* Selectores de estado/etapa en el detalle */
+.detailSelectors {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  border-radius: 0.7rem;
+  border: 1px solid #e3edf5;
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+
+.detailSelectors label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.84rem;
+  color: #486681;
+}
+
+.detailSelectors select {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+/* Sección de notas */
+.notesSection {
+  margin-top: 1rem;
+  border-radius: 1rem;
+  border: 1px solid #d3e4f1;
+  background: #ffffff;
+  padding: 1.2rem;
+}
+
+.notesHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.notesHeader h2 {
+  font-size: 1rem;
+  color: #15354f;
+}
+
+.notesCount {
+  font-size: 0.78rem;
+  color: #59758f;
+}
+
+.notesForm {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.notesForm input {
+  flex: 1;
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.notesForm button {
+  border: 1px solid #1f4f73;
+  border-radius: 0.65rem;
+  background: #1f4f73;
+  color: #ffffff;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.notesForm button:hover {
+  background: #14354d;
+}
+
+.notesForm button:disabled {
+  background: #8aaec9;
+  border-color: #8aaec9;
+  cursor: not-allowed;
+}
+
+.noteItem {
+  border-radius: 0.65rem;
+  border: 1px solid #e3edf5;
+  background: #f8fafc;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.noteContent {
+  font-size: 0.84rem;
+  color: #1a2d3d;
+  line-height: 1.5;
+}
+
+.noteMeta {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: #59758f;
+}
+
+.deleteNoteBtn {
+  border: 1px solid #d4a0a0;
+  border-radius: 0.5rem;
+  background: #fff0f0;
+  color: #7a1f1f;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.deleteNoteBtn:hover {
+  background: #ffe0e0;
+  border-color: #b87070;
+}
+
+.notesEmpty {
+  font-size: 0.84rem;
+  color: #59758f;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+  .filtersRow {
+    grid-template-columns: 1fr;
+  }
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+  .detailFields {
+    grid-template-columns: 1fr;
+  }
+  .detailSelectors {
+    grid-template-columns: 1fr;
+  }
+}

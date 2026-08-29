@@ -47,7 +47,28 @@ const VALID_CATEGORIES = [
 ] as const;
 
 // URL base configurable para apuntar a entorno local o remoto.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Auto-detecta la URL de Codespaces (el frontend corre en :3000, la API en :8000)
+function detectApiBaseUrl(): string {
+  // En Codespaces, la URL del frontend es algo como:
+  //   https://<name>-<puerto>.preview.app.github.dev
+  // y la API está en el puerto 8000. Detectamos cualquier puerto
+  // en el subdominio y lo reemplazamos por 8000 (donde corre la API).
+  if (typeof window !== "undefined") {
+    const match = window.location.hostname.match(/^(.*)-\d+\.(.*)$/);
+    if (match) {
+      return `https://${match[1]}-8000.${match[2]}`;
+    }
+  }
+
+  // Si no es Codespaces, usar variable de entorno o fallback local
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  return "http://localhost:8000";
+}
+
+const API_BASE_URL = detectApiBaseUrl();
 
 // Normaliza errores desconocidos a un mensaje legible para UI.
 function asErrorMessage(error: unknown): string {

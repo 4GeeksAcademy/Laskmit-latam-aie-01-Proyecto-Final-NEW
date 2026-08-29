@@ -11,5 +11,8 @@ Para correrlo ejecutar los siguientes comandos:
 
 ```
 cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final/scripts
-python analyze.py incidents-nexova.csv
+python analyze.py ../data/raw/incidents-nexova.csv
 ```
+
+El archivo CSV fuente (`incidents-nexova.csv`) está en `data/raw/`.
+Los resultados exportados se guardan en `data/process/results.csv`.

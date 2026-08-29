@@ -1,98 +1,143 @@
-# AI Engineering Company Project — Student Template
+# Nexova — Monorepo Corporativo
 
 [![4Geeks Academy](https://img.shields.io/badge/4Geeks-Academy-blue)](https://4geeksacademy.com)
 [![AI Engineering](https://img.shields.io/badge/track-AI%20Engineering-green)](https://4geeksacademy.com/es/programas-de-carrera/ingenieria-ia)
 
-_Base template for transversal projects in the AI Engineering Career Program — 4Geeks Academy._
-
-> _Instrucciones disponibles en español en [README.es.md](./README.es.md)._
+_Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Academy._
 
 ---
 
-## Purpose
+## Empresa
 
-This repository is the **starter template** for transversal projects. You will work on real company scenarios (Brasaland, TrackFlow, Nexova), building deliverables that map to course milestones (Web, Programming, Backend, Telemetry, RAG, Agents, Workflows, Real-time).
-
-- Create a template from this repository.
-- Replace the placeholder `CONTEXT.md` with your assigned company context.
-- Use `skills/` and the directory-level `README.md` files as working guidance.
+**Nexova Solutions** es una consultora de talento con operaciones en selección, soporte externalizado y formación corporativa. Este monorepo integra todos los proyectos desarrollados para Nexova a lo largo del programa.
 
 ---
 
-## Current status of the template
+## Estructura del repositorio
 
-The repository currently provides a **base folder structure and documentation skeleton**. It does not include runnable apps or global scripts yet.
-
-- `CONTEXT.md` is a placeholder and must be replaced with your assigned company context.
-- There is no root `AGENTS.md` yet.
-- Shared package metadata exists in `packages/shared/package.json` (`@repo/shared-types`), but no workspace runner is configured at root.
+| Carpeta | Contenido |
+|---------|-----------|
+| `uis/backoffice/` | Aplicación Next.js principal — Backoffice interno de Nexova |
+| `uis/backoffice/app/` | Rutas y páginas del backoffice |
+| `uis/backoffice/app/suppliers/` | Directorio de proveedores |
+| `uis/backoffice/app/talent-pipeline-tracker/` | Pipeline de candidaturas (People & Talent) |
+| `uis/backoffice/app/incidents-analyzer/` | Analizador de incidencias de soporte |
+| `uis/website/` | Sitio web público de Nexova |
+| `services/api/` | API backend (FastAPI) |
+| `services/api/clients/` | Clientes API reutilizados por los frontends |
+| `scripts/` | Utilidades y análisis de datos |
+| `data/` | Datos de entrada, resultados y pipelines ETL |
+| `infra/` | Configuración de infraestructura |
+| `packages/shared/` | Tipos y utilidades compartidas |
+| `SPECS/` | Tareas a realizar |
+| `SPECS/obsoletos` | Documentación de tareas obsoletas. No leer |
+| `docs/` | Arquitectura y propuestas técnicas |
+| `memory-bank/` | Contexto de negocio, técnico y progreso |
+| `agents/` | Reglas y skills reutilizables |
+| `AGENTS.md` | Protocolo operativo para desarrollo con IA |
 
 ---
 
-## Repository structure
+## Desarrollo
 
-```text
-ai-engineering-company-project-monorepo/
-├── README.md
-├── README.es.md
-├── CONTEXT.md                # Placeholder to be replaced with assigned context
-├── agents/                   # Agent patterns/templates and tools docs
-├── data/                     # raw, process, pipelines, eval
-├── docs/                     # Project and architecture documentation
-├── infra/                    # Docker, Terraform, deployment configs
-├── internal/                 # CLIs, packaged migration scripts, internal utilities
-├── mcps/                     # Model Context Protocol (MCP) Servers
-├── packages/
-│   └── shared/               # Shared package (@repo/shared-types)
-├── scripts/                  # Script conventions/documentation
-├── services/                 # APIs and background workers
-├── shared/                   # Shared assets/conventions at repo level
-├── skills/                   # Reusable agent skills
-├── uis/                      # User interfaces (React, Next.js, Streamlit, HTML)
-└── workflows/                # Automation/orchestration documentation
+### Requisitos previos
+
+- **Python 3.11+** y [uv](https://docs.astral.sh/uv/) (gestor de paquetes Python)
+- **Node.js 20+** y npm
+
+### 1. Backend — API (FastAPI)
+
+El backend expone los endpoints de proveedores y analizador de incidencias.
+
+```bash
+# Ir al directorio del servicio
+cd services/api
+
+# Instalar dependencias
+pip install -r requirements.txt
+# o con uv:
+# uv sync
+
+# Iniciar servidor en modo desarrollo
+python -m uvicorn main:app --reload --port 8000
 ```
 
----
+> La API queda disponible en **http://localhost:8000**.
+>
+> En Codespaces, haz público el puerto 8000 desde la pestaña **Puertos** → Port Visibility → Public.
 
-## How to start
+> **Poblar la base de datos:** La primera vez, ejecuta el seeder para cargar los 15 proveedores predefinidos:
+> ```bash
+> cd services/api && python seed.py
+> ```
+> Cada vez que borres la base de datos o clonés el repositorio, tendrás que volver a ejecutarlo.
 
-1. **Use this repository as a template** and create your own project repo.
-2. **Clone** your repository (or open it in Codespaces).
-3. **Replace** `CONTEXT.md` with the full context for your assigned company.
-4. **Review** each top-level folder `README.md` to understand intended responsibilities (`uis/`, `services/`, `data/`, `skills/`, etc.).
-5. **Start implementing** milestone deliverables in `uis/` and `services/`, reusing `packages/shared/` and `data/` as needed.
+Documentación interactiva de los endpoints:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
----
+### 2. Frontend — Backoffice (Next.js)
 
-## Milestones (reference)
+Aplicación principal de administración interna de Nexova.
 
-| Milestone | Focus        | Typical deliverables                        |
-| --------- | ------------ | ------------------------------------------- |
-| 0         | Prework      | Environment setup, first prompts            |
-| 1         | Web          | Corporate website, forms, SEO               |
-| 2         | Programming  | Business logic, scoring, calculations       |
-| 3         | AI-driven UI | AI-generated interfaces                     |
-| 4         | Next.js      | Portals, loyalty app, operations UI         |
-| 5         | Backend      | Central API (locations, menus, sales, etc.) |
-| 6         | Telemetry    | Data pipeline, dashboards                   |
-| 7         | RAG & Memory | Semantic knowledge base, search             |
-| 8         | Agents       | Support, onboarding, training agents        |
-| 9         | Workflows    | n8n automations                             |
-| 10        | Real-time    | Live dashboards, alerts, streaming          |
+```bash
+cd uis/backoffice
 
----
+# Instalar dependencias
+npm install
 
-## Links
+# Iniciar servidor de desarrollo
+npm run dev
+```
 
-- [4Geeks Academy — AI Engineering](https://4geeksacademy.com/es/programas-de-carrera/ingenieria-ia)
-- [How to start a coding project](https://4geeks.com/lesson/how-to-start-a-project)
+> El backoffice se abre en **http://localhost:3000**.
+>
+> Para cambiar el puerto: `npm run dev -- --port 3001`
 
----
+### Configuración de variables de entorno
 
-## Contributors
+Crea un archivo `.env.local` en `uis/backoffice/` con las URLs de las APIs que necesita cada módulo:
 
-This template was built as part of the 4Geeks Academy AI Engineering Career Program by [@marcogonzalo](https://www.linkedin.com/in/marcogonzalo) and [@alezanchezr](https://x.com/alesanchezr) and many other contributors. Find out more about our [AI Engineering Course](https://4geeksacademy.com/en/career-programs/ai-engineering), and [other courses](https://4geeksacademy.com/en/program-comparison).
+```bash
+# API del Talent Pipeline Tracker (playground 4Geeks)
+NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
 
-You can find other templates and resources like this at the [4Geeks Academy GitHub page](https://github.com/4geeksacademy).
+# API del Backend local (FastAPI) para Suppliers e Incidencias
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
 
-_This template is maintained by 4Geeks Academy for the AI Engineering track. For exclusive use in the programme._
+Cada módulo usa la variable que le corresponde sin necesidad de cambios manuales:
+
+| Módulo | Variable | API |
+|--------|----------|-----|
+| Talent Pipeline Tracker | `NEXT_PUBLIC_API_URL` | playground.4geeks.com |
+| Suppliers | `NEXT_PUBLIC_API_BASE_URL` | localhost:8000 (FastAPI) |
+| Incidencias | input en pantalla | localhost:8000 (FastAPI) |
+
+### 3. Frontend — Sitio Web Público (Next.js)
+
+```bash
+cd uis/website
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+```
+
+> El sitio web se abre en **http://localhost:3001** (o el puerto que se asigne al ejecutarlo junto al backoffice).
+>
+> Para usar un puerto específico: `npm run dev -- --port 3001`
+
+### Resumen de puertos
+
+| Servicio | Puerto por defecto | Comando de inicio |
+|----------|-------------------|-------------------|
+| API (FastAPI) | `8000` | `cd services/api && python -m uvicorn main:app --reload --port 8000` |
+| Backoffice (Next.js) | `3000` | `cd uis/backoffice && npm run dev` |
+| Sitio web (Next.js) | `3000` * | `cd uis/website && npm run dev` |
+
+\* Al ejecutar ambos frontends simultáneamente, asigna puertos distintos con `npm run dev -- --port <puerto>`.
+
+

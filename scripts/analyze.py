@@ -101,9 +101,11 @@ def main() -> int:
     export_choice = input("Export results to CSV? [y / n]: ").strip().lower()
 
     if export_choice == "y":
-        output_path = Path.cwd() / "results.csv"
+        output_dir = REPO_ROOT / "data" / "process"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "results.csv"
         output_path.write_bytes(export_result_to_csv_bytes(result))
-        print(f"Results exported to {output_path.name}")
+        print(f"Results exported to {output_path.relative_to(REPO_ROOT)}")
 
     return 0
 

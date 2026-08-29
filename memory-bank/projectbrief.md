@@ -7,7 +7,7 @@ Nexova Solutions es una consultora de talento con operaciones en seleccion, sopo
 Nexova opera con sistemas desconectados, flujos manuales y baja trazabilidad. Eso genera retrasos, errores y decisiones con informacion tardia. Este proyecto construye una base tecnica unificada para acelerar entregas y reducir friccion operativa.
 
 ## Objetivos del proyecto
-1. Unificar web publica, backoffice y servicios en una arquitectura coherente.
+1. Unificar 'web corporativa publica', 'backoffice interno' y 'servicios backend' en una arquitectura coherente.
 2. Reutilizar logica de negocio sin duplicaciones.
 3. Mantener contexto de negocio y tecnico persistente para agentes de desarrollo.
 4. Mejorar velocidad y calidad de entrega con reglas y skills verificables.

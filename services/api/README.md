@@ -18,16 +18,24 @@ Backend para la Fase 2 del analizador de incidencias.
 
 ## Ejecución
 
-Desde la raíz del repositorio:
+### Local
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r services/api/requirements.txt
-uvicorn services.api.main:app --reload --port 8000
+cd services/api
+python -m uvicorn main:app --reload --port 8000
 ```
 
-El API quedará en `http://localhost:8000`.
+### Codespaces
+
+```bash
+cd services/api
+python -m uvicorn main:app --reload --port 8000 --host 0.0.0.0
+```
+
+> 🌐 En Codespaces haz público el puerto 8000 desde la pestaña **Puertos** de VS Code
+> (click derecho → Port Visibility → Public) para que el frontend pueda conectarse.
+
+La API quedará en `http://localhost:8000` (local) o en una URL pública `https://<nombre>-8000.preview.app.github.dev` (Codespaces).
 
 ## Smoke test de Suppliers
 
