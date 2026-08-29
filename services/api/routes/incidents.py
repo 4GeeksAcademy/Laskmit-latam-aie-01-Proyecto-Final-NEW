@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
+from tinydb.table import Document
 
 # Fallback de imports para soportar ejecución desde raíz o desde services/api.
 try:
+    from services.api.auth import dependencies as auth_deps
     from shared.incidents_analysis import (
         InvalidCsvFormatError,
         analyze_csv_bytes,
@@ -16,6 +18,7 @@ try:
 except ModuleNotFoundError:
     from pathlib import Path
     import sys
+    from auth import dependencies as auth_deps  # type: ignore[no-redef]
 
     repo_root = Path(__file__).resolve().parents[3]
     if str(repo_root) not in sys.path:
@@ -47,7 +50,10 @@ def health_check() -> dict[str, str]:
 
 
 @router.post("/analyze")
-async def analyze_incidents(file: UploadFile = File(...)) -> JSONResponse:
+async def analyze_incidents(
+    file: UploadFile = File(...),
+    current_user: Document = Depends(auth_deps.get_current_user),
+) -> JSONResponse:
     global _last_analysis
 
     if not file.filename:
@@ -84,7 +90,9 @@ async def analyze_incidents(file: UploadFile = File(...)) -> JSONResponse:
 
 
 @router.get("/results/export")
-def export_latest_result() -> Response:
+def export_latest_result(
+    current_user: Document = Depends(auth_deps.get_current_user),
+) -> Response:
     if _last_analysis is None:
         raise HTTPException(status_code=404, detail="No analysis found. Run /api/incidents/analyze first.")
 

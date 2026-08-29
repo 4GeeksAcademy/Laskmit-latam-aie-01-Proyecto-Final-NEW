@@ -2,15 +2,33 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from dotenv import load_dotenv
+from passlib.hash import bcrypt as bcrypt_hasher
 from tinydb import Query
 
 # Fallback de imports para soportar ejecución desde distintos cwd.
 try:
-    from services.api.database import get_suppliers_table
+    from services.api.auth.models import UserDomain, UserRole
+    from services.api.database import get_db, get_suppliers_table
     from services.api.models import SupplierCreate
 except ModuleNotFoundError:
-    from database import get_suppliers_table
+    from auth.models import UserDomain, UserRole
+    from database import get_db, get_suppliers_table
     from models import SupplierCreate
+
+# Cargar variables de entorno para obtener credenciales del admin.
+load_dotenv()
+
+import os
+
+ADMIN_EMAIL = os.getenv("USUARIO_ADMINISTRADOR")
+ADMIN_PASSWORD = os.getenv("CLAVE_ADMINISTRADOR")
+
+if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+    raise RuntimeError(
+        "Faltan variables de entorno: USUARIO_ADMINISTRADOR y/o CLAVE_ADMINISTRADOR. "
+        "Defínelas en el archivo .env"
+    )
 
 # Dataset oficial solicitado por negocio para no iniciar con base vacía.
 SUPPLIERS_SEED = [
@@ -174,7 +192,26 @@ SUPPLIERS_SEED = [
 
 
 def main() -> None:
-    # Carga idempotente: inserta solo proveedores que aún no existen.
+    # ── 1. Crear/asegurar usuario administrador ──────────────────────
+    db = get_db()
+    users_table = db.table("users")
+    user_query = Query()
+
+    existing_admin = users_table.get(user_query.email == ADMIN_EMAIL)
+    if existing_admin:
+        print(f"Admin user '{ADMIN_EMAIL}' already exists. Skipping.")
+    else:
+        admin_domain = UserDomain(
+            email=ADMIN_EMAIL,
+            hashed_password=bcrypt_hasher.hash(ADMIN_PASSWORD),
+            role=UserRole.ADMIN,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+        )
+        users_table.insert(admin_domain.model_dump(mode="json"))
+        print(f"Admin user '{ADMIN_EMAIL}' created successfully.")
+
+    # ── 2. Carga idempotente de proveedores ─────────────────────────
     suppliers_table = get_suppliers_table()
     supplier_query = Query()
 
