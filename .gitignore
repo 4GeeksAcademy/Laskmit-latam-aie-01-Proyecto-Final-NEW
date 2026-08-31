@@ -2,6 +2,7 @@ __pycache__/
 services/api/__pycache__/
 *.py[cod]
 *.egg-info/
+.env
 
 # Local TinyDB data for suppliers service
 services/api/data/
