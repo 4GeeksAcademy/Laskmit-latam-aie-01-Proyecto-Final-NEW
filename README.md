@@ -55,7 +55,7 @@ El backend expone los endpoints de autenticación JWT, proveedores y analizador 
 # Ir al directorio del servicio
 cd services/api
 
-# Instalar dependencias
+# Instalar dependencias  (solo la primera vez que se crea)
 pip install -r requirements.txt
 # o con uv:
 # uv sync
