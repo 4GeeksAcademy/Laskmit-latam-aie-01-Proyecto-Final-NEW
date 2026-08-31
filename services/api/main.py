@@ -16,8 +16,23 @@ try:
 except ModuleNotFoundError:
     from routes.incidents import router as incidents_router
 
+try:
+    from services.api.routes.auth import router as auth_router
+except ModuleNotFoundError:
+    from routes.auth import router as auth_router  # type: ignore[no-redef]
 
-app = FastAPI(title="Nexova Operations API", version="1.1.0")
+try:
+    from services.api.routes.users import router as users_router
+except ModuleNotFoundError:
+    from routes.users import router as users_router  # type: ignore[no-redef]
+
+try:
+    from services.api.routes.profiles import router as profiles_router
+except ModuleNotFoundError:
+    from routes.profiles import router as profiles_router  # type: ignore[no-redef]
+
+
+app = FastAPI(title="Nexova Operations API", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,3 +44,6 @@ app.add_middleware(
 
 app.include_router(suppliers_router)
 app.include_router(incidents_router)
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(profiles_router)

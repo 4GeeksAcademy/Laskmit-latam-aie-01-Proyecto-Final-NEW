@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
-
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from tinydb.table import Document
 
 # Fallback de imports para soportar ejecución desde raíz o desde services/api.
@@ -17,6 +16,7 @@ try:
         SupplierResponse,
         SupplierStatusUpdate,
     )
+    from services.api.auth import dependencies as auth_deps
 except ModuleNotFoundError:
     from database import get_suppliers_table
     from models import (
@@ -27,6 +27,7 @@ except ModuleNotFoundError:
         SupplierResponse,
         SupplierStatusUpdate,
     )
+    from auth import dependencies as auth_deps  # type: ignore[no-redef]
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
@@ -39,7 +40,7 @@ def _to_response(document: Document) -> SupplierResponse:
 
 
 @router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
-def create_supplier(supplier: SupplierCreate) -> SupplierResponse:
+def create_supplier(supplier: SupplierCreate, current_user: Document = Depends(auth_deps.get_current_user)) -> SupplierResponse:
     # Crea proveedor nuevo y registra updated_at desde el backend.
     suppliers_table = get_suppliers_table()
     now = datetime.now(timezone.utc)
@@ -59,6 +60,7 @@ def create_supplier(supplier: SupplierCreate) -> SupplierResponse:
 def list_suppliers(
     country: SupplierCountry | None = Query(default=None),
     category: SupplierCategory | None = Query(default=None),
+    current_user: Document = Depends(auth_deps.get_current_user),
 ) -> list[SupplierResponse]:
     # Listado completo con filtros opcionales por país y categoría.
     suppliers_table = get_suppliers_table()
@@ -76,7 +78,7 @@ def list_suppliers(
 
 
 @router.get("/{supplier_id}", response_model=SupplierResponse)
-def get_supplier(supplier_id: int) -> SupplierResponse:
+def get_supplier(supplier_id: int, current_user: Document = Depends(auth_deps.get_current_user)) -> SupplierResponse:
     # Recupera detalle por ID o responde 404 si no existe.
     suppliers_table = get_suppliers_table()
     document = suppliers_table.get(doc_id=supplier_id)
@@ -88,7 +90,7 @@ def get_supplier(supplier_id: int) -> SupplierResponse:
 
 
 @router.patch("/{supplier_id}/rate", response_model=SupplierResponse)
-def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate) -> SupplierResponse:
+def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate, current_user: Document = Depends(auth_deps.get_current_user)) -> SupplierResponse:
     # Actualiza tarifa y refresca updated_at para trazabilidad.
     suppliers_table = get_suppliers_table()
     existing = suppliers_table.get(doc_id=supplier_id)
@@ -113,7 +115,7 @@ def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate) -> Suppl
 
 
 @router.patch("/{supplier_id}/status", response_model=SupplierResponse)
-def update_supplier_status(supplier_id: int, payload: SupplierStatusUpdate) -> SupplierResponse:
+def update_supplier_status(supplier_id: int, payload: SupplierStatusUpdate, current_user: Document = Depends(auth_deps.get_current_user)) -> SupplierResponse:
     # Cambia únicamente el estado operativo del proveedor.
     suppliers_table = get_suppliers_table()
     existing = suppliers_table.get(doc_id=supplier_id)
@@ -136,7 +138,7 @@ def update_supplier_status(supplier_id: int, payload: SupplierStatusUpdate) -> S
 
 
 @router.delete("/{supplier_id}", status_code=status.HTTP_200_OK)
-def delete_supplier(supplier_id: int) -> dict[str, str]:
+def delete_supplier(supplier_id: int, current_user: Document = Depends(auth_deps.get_current_user)) -> dict[str, str]:
     # Borra proveedor del directorio; si no existe retorna 404.
     suppliers_table = get_suppliers_table()
     existing = suppliers_table.get(doc_id=supplier_id)
