@@ -73,3 +73,238 @@ a {
   border-color: #bad4e7;
   background: #eaf2f9;
 }
+
+.appNavInner nav button,
+.authState button {
+  border: 1px solid #bad4e7;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #285270;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.35rem 0.7rem;
+}
+
+.appNavInner nav button:hover,
+.authState button:hover {
+  background: #eaf2f9;
+}
+
+.authState {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.authPage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #edf4f8 0%, #ffffff 48%, #e6f3ee 100%);
+}
+
+.authPanel {
+  width: min(100%, 430px);
+  border: 1px solid #cbdde8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(23, 54, 76, 0.12);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.authPanelWide {
+  width: min(100%, 760px);
+}
+
+.authEyebrow {
+  color: #087a64;
+  font: 600 0.78rem var(--font-ibm-plex-mono), monospace;
+  text-transform: uppercase;
+}
+
+.authPanel h1 {
+  margin-top: 0.45rem;
+  color: #133650;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+}
+
+.authIntro,
+.authAlternative {
+  margin-top: 0.55rem;
+  color: #526b7d;
+}
+
+.authPanel form {
+  margin-top: 1.5rem;
+}
+
+.authPanel label {
+  display: block;
+  margin: 0.9rem 0 0.35rem;
+  color: #23475f;
+  font-weight: 600;
+}
+
+.authPanel label span {
+  color: #6d8291;
+  font-weight: 400;
+}
+
+.authPanel input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #adc5d4;
+  border-radius: 4px;
+  padding: 0.65rem 0.75rem;
+  color: #162a3c;
+  background: #fbfdff;
+  font: inherit;
+}
+
+.authPanel input:focus {
+  border-color: #087a64;
+  outline: 3px solid rgba(8, 122, 100, 0.16);
+}
+
+.authPanel input[aria-invalid="true"] {
+  border-color: #b53b3b;
+}
+
+.authPanel button {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  background: #087a64;
+  color: #ffffff;
+  cursor: pointer;
+  font: 700 1rem var(--font-space-grotesk), sans-serif;
+}
+
+.authPanel button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.authAlternative a {
+  color: #087a64;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.authError {
+  min-height: 2.5rem;
+  padding-top: 0.75rem;
+  color: #9f2929;
+}
+
+.fieldError {
+  margin-top: 0.3rem;
+  color: #9f2929;
+  font-size: 0.85rem;
+}
+
+.authFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+
+.profilePage {
+  min-height: calc(100vh - 56px);
+  padding: clamp(2rem, 6vw, 5rem) 1rem;
+}
+
+.profilePanel {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  border-left: 4px solid #087a64;
+  background: #ffffff;
+  box-shadow: 0 14px 45px rgba(23, 54, 76, 0.1);
+  padding: clamp(1.5rem, 5vw, 2.75rem);
+}
+
+.profilePanel h1 {
+  margin-top: 0.45rem;
+  color: #133650;
+  font-size: 2rem;
+}
+
+.profileIdentity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #edf4f8;
+}
+
+.profileIdentity dt {
+  color: #607989;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.profileIdentity dd {
+  margin-top: 0.2rem;
+  overflow-wrap: anywhere;
+  color: #133650;
+  font-weight: 700;
+}
+
+.profilePanel label {
+  display: block;
+  margin: 0.9rem 0 0.35rem;
+  font-weight: 600;
+}
+
+.profilePanel input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #adc5d4;
+  border-radius: 4px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+.profilePanel button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 4px;
+  background: #087a64;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0.65rem 1.2rem;
+  font: 700 1rem var(--font-space-grotesk), sans-serif;
+}
+
+.profilePanel button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.profileSuccess {
+  min-height: 2rem;
+  color: #087a64;
+}
+
+@media (max-width: 820px) {
+  .appNavInner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 0.75rem 0;
+  }
+
+  .appNavInner nav {
+    flex-wrap: wrap;
+  }
+
+  .authFormGrid {
+    grid-template-columns: 1fr;
+  }
+}

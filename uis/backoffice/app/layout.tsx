@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
-import Link from "next/link";
+import { AuthGuard } from "../components/auth/auth-guard";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -26,20 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
     >
-      <body>
-        <header className="appNav">
-          <div className="appNavInner">
-            <p>Nexova Backoffice</p>
-            <nav>
-              <Link href="/">Inicio</Link>
-              <Link href="/suppliers">Suppliers</Link>
-              <Link href="/talent-pipeline-tracker">Talent Pipeline</Link>
-              <Link href="/incidents-analyzer">Incidencias</Link>
-            </nav>
-          </div>
-        </header>
-        {children}
-      </body>
+      <body><AuthGuard>{children}</AuthGuard></body>
     </html>
   );
 }

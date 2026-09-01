@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { apiRequest, getErrorMessage } from "../../lib/api-client";
 import styles from "./suppliers.module.css";
 
 // Tipos de dominio usados en el frontend para reflejar el contrato de la API.
@@ -45,60 +46,6 @@ const VALID_CATEGORIES = [
   "office_and_facilities",
   "it_and_software_licenses",
 ] as const;
-
-// URL base configurable para apuntar a entorno local o remoto.
-// Auto-detecta la URL de Codespaces (el frontend corre en :3000, la API en :8000)
-function detectApiBaseUrl(): string {
-  // En Codespaces, la URL del frontend es algo como:
-  //   https://<name>-<puerto>.preview.app.github.dev
-  // y la API está en el puerto 8000. Detectamos cualquier puerto
-  // en el subdominio y lo reemplazamos por 8000 (donde corre la API).
-  if (typeof window !== "undefined") {
-    const match = window.location.hostname.match(/^(.*)-\d+\.(.*)$/);
-    if (match) {
-      return `https://${match[1]}-8000.${match[2]}`;
-    }
-  }
-
-  // Si no es Codespaces, usar variable de entorno o fallback local
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
-  }
-
-  return "http://localhost:8000";
-}
-
-const API_BASE_URL = detectApiBaseUrl();
-
-// Normaliza errores desconocidos a un mensaje legible para UI.
-function asErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Unexpected error while processing request.";
-}
-
-// Extrae detalle útil desde errores FastAPI (detail string o lista de validación).
-async function parseApiError(response: Response): Promise<string> {
-  const message = `Request failed with status ${response.status}`;
-
-  try {
-    const payload = (await response.json()) as { detail?: unknown };
-    if (typeof payload.detail === "string") {
-      return payload.detail;
-    }
-    if (Array.isArray(payload.detail) && payload.detail.length > 0) {
-      const first = payload.detail[0] as { msg?: string };
-      if (typeof first?.msg === "string") {
-        return first.msg;
-      }
-    }
-  } catch {
-    return message;
-  }
-
-  return message;
-}
 
 // Detecta renovaciones que vencen en los próximos 60 días para resaltarlas.
 function isRenewalSoon(contractRenewalDate?: string | null): boolean {
@@ -157,18 +104,12 @@ export function SuppliersPageClient() {
 
   // Consulta base para recuperar proveedores con filtros opcionales.
   async function fetchSuppliers(query: string): Promise<Supplier[]> {
-    const response = await fetch(`${API_BASE_URL}/suppliers${query}`, {
+    return apiRequest<Supplier[]>(`/suppliers${query}`, {
       method: "GET",
       headers: {
         Accept: "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(await parseApiError(response));
-    }
-
-    return (await response.json()) as Supplier[];
   }
 
   // Recarga completa para el botón manual de Refresh y post-acciones.
@@ -186,7 +127,7 @@ export function SuppliersPageClient() {
         }, {})
       );
     } catch (error) {
-      setErrorMessage(asErrorMessage(error));
+      setErrorMessage(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -215,7 +156,7 @@ export function SuppliersPageClient() {
         if (!isMounted) {
           return;
         }
-        setErrorMessage(asErrorMessage(error));
+        setErrorMessage(getErrorMessage(error));
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -278,18 +219,10 @@ export function SuppliersPageClient() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/suppliers`, {
+      await apiRequest<Supplier>("/suppliers", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
+        body: payload,
       });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response));
-      }
 
       setSuccessMessage("Supplier created successfully.");
       setCreateInput({
@@ -305,7 +238,7 @@ export function SuppliersPageClient() {
       });
       await loadSuppliers();
     } catch (error) {
-      setErrorMessage(asErrorMessage(error));
+      setErrorMessage(getErrorMessage(error));
     }
   }
 
@@ -321,24 +254,14 @@ export function SuppliersPageClient() {
     setSuccessMessage("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/suppliers/${supplierId}/rate`, {
+      const updated = await apiRequest<Supplier>(`/suppliers/${supplierId}/rate`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ monthly_rate: value }),
+        body: { monthly_rate: value },
       });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response));
-      }
-
-      const updated = (await response.json()) as Supplier;
       setSuppliers((previous) => previous.map((supplier) => (supplier.id === supplierId ? updated : supplier)));
       setSuccessMessage(`Monthly rate updated for ${updated.name}.`);
     } catch (error) {
-      setErrorMessage(asErrorMessage(error));
+      setErrorMessage(getErrorMessage(error));
     }
   }
 
@@ -348,24 +271,14 @@ export function SuppliersPageClient() {
     setSuccessMessage("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/suppliers/${supplierId}/status`, {
+      const updated = await apiRequest<Supplier>(`/suppliers/${supplierId}/status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ status }),
+        body: { status },
       });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response));
-      }
-
-      const updated = (await response.json()) as Supplier;
       setSuppliers((previous) => previous.map((supplier) => (supplier.id === supplierId ? updated : supplier)));
       setSuccessMessage(`Status updated for ${updated.name}.`);
     } catch (error) {
-      setErrorMessage(asErrorMessage(error));
+      setErrorMessage(getErrorMessage(error));
     }
   }
 
@@ -380,16 +293,9 @@ export function SuppliersPageClient() {
     setSuccessMessage("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/suppliers/${supplierId}`, {
+      await apiRequest<{ message: string }>(`/suppliers/${supplierId}`, {
         method: "DELETE",
-        headers: {
-          Accept: "application/json",
-        },
       });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response));
-      }
 
       setSuppliers((previous) => previous.filter((supplier) => supplier.id !== supplierId));
       setRateInputs((previous) => {
@@ -399,7 +305,7 @@ export function SuppliersPageClient() {
       });
       setSuccessMessage(`Supplier ${supplierName} deleted successfully.`);
     } catch (error) {
-      setErrorMessage(asErrorMessage(error));
+      setErrorMessage(getErrorMessage(error));
     }
   }
 
