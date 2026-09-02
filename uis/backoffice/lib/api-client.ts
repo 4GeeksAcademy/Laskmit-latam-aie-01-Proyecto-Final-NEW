@@ -5,7 +5,7 @@ type ResponseType = "json" | "blob" | "text" | "void";
 
 interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   authenticated?: boolean;
-  body?: BodyInit | Record<string, unknown> | null;
+  body?: BodyInit | object | null;
   responseType?: ResponseType;
 }
 
@@ -59,7 +59,7 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(fallback, response.status);
 }
 
-function isJsonBody(body: ApiRequestOptions["body"]): body is Record<string, unknown> {
+function isJsonBody(body: ApiRequestOptions["body"]): body is object {
   return body !== null && typeof body === "object" && !(body instanceof FormData) && !(body instanceof Blob) && !(body instanceof URLSearchParams);
 }
 

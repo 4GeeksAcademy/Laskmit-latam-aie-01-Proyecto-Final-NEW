@@ -197,6 +197,17 @@ a {
   text-decoration: underline;
 }
 
+.authFieldLink {
+  margin-top: 0.65rem;
+  text-align: right;
+}
+
+.authFieldLink a {
+  color: #087a64;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .authError {
   min-height: 2.5rem;
   padding-top: 0.75rem;

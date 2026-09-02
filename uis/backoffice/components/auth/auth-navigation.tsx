@@ -22,6 +22,7 @@ export function AuthNavigation() {
           <Link href="/talent-pipeline-tracker">Talent Pipeline</Link>
           <Link href="/incidents-analyzer">Incidencias</Link>
           <Link href="/account/profile">Perfil</Link>
+          <Link href="/account/change-password">Contraseña</Link>
           <button type="button" onClick={logout}>Cerrar sesión</button>
         </nav>
       </div>

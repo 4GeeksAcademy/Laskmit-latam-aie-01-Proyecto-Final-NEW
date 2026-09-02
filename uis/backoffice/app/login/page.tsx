@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, Suspense, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, apiRequest, getErrorMessage } from "../../lib/api-client";
 import { clearAccessToken, setAccessToken } from "../../lib/auth";
 import type { AuthToken } from "../../lib/auth-types";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const emailRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const passwordReset = searchParams.get("passwordReset") === "success";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -62,7 +64,12 @@ export default function LoginPage() {
           <label htmlFor="password">Contraseña</label>
           <input id="password" name="password" type="password" autoComplete="current-password" required />
 
+          <p className="authFieldLink"><Link href="/forgot-password">¿Olvidaste tu contraseña?</Link></p>
+
           <p className="authError" role="alert" aria-live="assertive">{error}</p>
+          <p className="profileSuccess" role="status" aria-live="polite">
+            {passwordReset ? "Tu contraseña fue actualizada. Ya puedes iniciar sesión." : ""}
+          </p>
           <button type="submit" disabled={submitting}>
             {submitting ? "Ingresando..." : "Ingresar"}
           </button>
@@ -71,5 +78,13 @@ export default function LoginPage() {
         <p className="authAlternative">¿Aún no tienes cuenta? <Link href="/register">Crear cuenta</Link></p>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="authState" role="status">Cargando...</main>}>
+      <LoginForm />
+    </Suspense>
   );
 }
