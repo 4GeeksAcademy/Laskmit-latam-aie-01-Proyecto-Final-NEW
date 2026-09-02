@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from tinydb.table import Document
 
@@ -7,13 +9,36 @@ from tinydb.table import Document
 try:
     from services.api.auth import dependencies as auth_deps
     from services.api.auth import services as auth_services
-    from services.api.auth.models import AuthMeResponse, LoginRequest, Token
+    from services.api.auth.models import (
+        AuthMeResponse,
+        ChangePasswordRequest,
+        ForgotPasswordRequest,
+        LoginRequest,
+        PasswordActionResponse,
+        ResetPasswordRequest,
+        Token,
+    )
+    from services.api.notifications.resend_client import EmailDeliveryError, send_password_reset_email
 except ModuleNotFoundError:
     from auth import dependencies as auth_deps  # type: ignore[no-redef]
     from auth import services as auth_services  # type: ignore[no-redef]
-    from auth.models import AuthMeResponse, LoginRequest, Token  # type: ignore[no-redef]
+    from auth.models import (  # type: ignore[no-redef]
+        AuthMeResponse,
+        ChangePasswordRequest,
+        ForgotPasswordRequest,
+        LoginRequest,
+        PasswordActionResponse,
+        ResetPasswordRequest,
+        Token,
+    )
+    from notifications.resend_client import EmailDeliveryError, send_password_reset_email  # type: ignore[no-redef]
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
+
+FORGOT_PASSWORD_MESSAGE = "Si esa direccion esta registrada, recibiras un enlace en breve."
+PASSWORD_UPDATED_MESSAGE = "Contrasena actualizada correctamente."
+INVALID_RESET_TOKEN_MESSAGE = "El enlace de restablecimiento no es valido o ha expirado."
 
 
 @router.post("/login", response_model=Token)
@@ -32,6 +57,56 @@ def login(payload: LoginRequest) -> Token:
 
     token = auth_deps.create_access_token(user_doc.doc_id)
     return Token(access_token=token)
+
+
+@router.post("/forgot-password", response_model=PasswordActionResponse)
+def forgot_password(payload: ForgotPasswordRequest) -> PasswordActionResponse:
+    """Solicita un enlace sin revelar si la cuenta existe."""
+    reset_data = auth_services.create_password_reset_token(str(payload.email))
+    if reset_data is not None:
+        token, expires_at = reset_data
+        try:
+            send_password_reset_email(str(payload.email), token, expires_at)
+        except EmailDeliveryError:
+            auth_services.invalidate_password_reset_token(token)
+            logger.warning("Password reset email delivery failed.")
+
+    return PasswordActionResponse(message=FORGOT_PASSWORD_MESSAGE)
+
+
+@router.post("/reset-password", response_model=PasswordActionResponse)
+def reset_password(payload: ResetPasswordRequest) -> PasswordActionResponse:
+    """Restablece una contrasena mediante un token de un solo uso."""
+    if not auth_services.reset_password(payload.token, payload.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=INVALID_RESET_TOKEN_MESSAGE,
+        )
+    return PasswordActionResponse(message=PASSWORD_UPDATED_MESSAGE)
+
+
+@router.post("/change-password", response_model=PasswordActionResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: Document = Depends(auth_deps.get_current_user),
+) -> PasswordActionResponse:
+    """Cambia la contrasena del usuario autenticado."""
+    result = auth_services.change_password(
+        current_user.doc_id,
+        payload.current_password,
+        payload.new_password,
+    )
+    if result == "invalid_current":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contrasena actual no es correcta.",
+        )
+    if result == "same_password":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La nueva contrasena debe ser diferente de la actual.",
+        )
+    return PasswordActionResponse(message=PASSWORD_UPDATED_MESSAGE)
 
 
 @router.get("/me", response_model=AuthMeResponse)

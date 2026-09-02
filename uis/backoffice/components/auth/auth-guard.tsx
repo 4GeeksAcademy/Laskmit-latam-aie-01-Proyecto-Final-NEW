@@ -7,7 +7,8 @@ import { getAccessToken } from "../../lib/auth";
 import type { CurrentUser } from "../../lib/auth-types";
 import { AuthNavigation } from "./auth-navigation";
 
-const PUBLIC_ROUTES = new Set(["/login", "/register"]);
+const AUTH_ROUTES = new Set(["/login", "/register"]);
+const PASSWORD_RECOVERY_ROUTES = new Set(["/forgot-password", "/reset-password"]);
 
 type GuardState = "checking" | "authenticated" | "public" | "error";
 
@@ -20,14 +21,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    const isPublic = PUBLIC_ROUTES.has(pathname);
+    const isAuthRoute = AUTH_ROUTES.has(pathname);
+    const isPasswordRecoveryRoute = PASSWORD_RECOVERY_ROUTES.has(pathname);
 
     async function validateSession(): Promise<void> {
       setState("checking");
       setError("");
 
+      if (isPasswordRecoveryRoute) {
+        setState("public");
+        return;
+      }
+
       if (!getAccessToken()) {
-        if (isPublic) {
+        if (isAuthRoute) {
           setState("public");
         } else {
           router.replace("/login");
@@ -38,14 +45,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       try {
         await apiRequest<CurrentUser>("/auth/me");
         if (!active) return;
-        if (isPublic) {
+        if (isAuthRoute) {
           router.replace("/");
         } else {
           setState("authenticated");
         }
       } catch (requestError) {
         if (!active) return;
-        if (isPublic && !getAccessToken()) {
+        if (isAuthRoute && !getAccessToken()) {
           setState("public");
           return;
         }

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+import hashlib
+import os
+import secrets
 
 from passlib.hash import bcrypt
 from tinydb.table import Document
@@ -31,6 +34,11 @@ except ModuleNotFoundError:
 
 USERS_TABLE = "users"
 PROFILES_TABLE = "profiles"
+PASSWORD_RESET_TOKENS_TABLE = "password_reset_tokens"
+PASSWORD_RESET_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30"))
+
+if not 15 <= PASSWORD_RESET_EXPIRE_MINUTES <= 60:
+    raise ValueError("PASSWORD_RESET_EXPIRE_MINUTES must be between 15 and 60.")
 
 
 # ──────────────────────────────────────────────
@@ -46,6 +54,10 @@ def _hash_password(password: str) -> str:
 def _verify_password(password: str, hashed: str) -> bool:
     """Verifica una contraseña contra su hash bcrypt."""
     return bcrypt.verify(password, hashed)
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def _user_to_response(doc: Document) -> UserResponse:
@@ -218,6 +230,95 @@ def authenticate_user(email: str, password: str) -> Document | None:
     if not _verify_password(password, doc["hashed_password"]):
         return None
     return doc
+
+
+def create_password_reset_token(email: str) -> tuple[str, datetime] | None:
+    """Crea un token de un solo uso para un usuario activo."""
+    user = get_user_doc_by_email(email)
+    if user is None or not user.get("is_active", True):
+        return None
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+    token = secrets.token_urlsafe(32)
+    tokens = get_db().table(PASSWORD_RESET_TOKENS_TABLE)
+
+    for token_doc in tokens:
+        if token_doc.get("user_id") == user.doc_id and token_doc.get("used_at") is None:
+            tokens.update({"used_at": now.isoformat()}, doc_ids=[token_doc.doc_id])
+
+    tokens.insert(
+        {
+            "user_id": user.doc_id,
+            "token_hash": _hash_reset_token(token),
+            "created_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
+            "used_at": None,
+        }
+    )
+    return token, expires_at
+
+
+def invalidate_password_reset_token(token: str) -> None:
+    """Invalida un token emitido cuando no puede enviarse por correo."""
+    tokens = get_db().table(PASSWORD_RESET_TOKENS_TABLE)
+    token_hash = _hash_reset_token(token)
+    now = datetime.now(timezone.utc).isoformat()
+    for token_doc in tokens:
+        if token_doc.get("token_hash") == token_hash and token_doc.get("used_at") is None:
+            tokens.update({"used_at": now}, doc_ids=[token_doc.doc_id])
+            return
+
+
+def reset_password(token: str, new_password: str) -> bool:
+    """Actualiza una contraseña si el token es válido y lo invalida al usarlo."""
+    tokens = get_db().table(PASSWORD_RESET_TOKENS_TABLE)
+    token_hash = _hash_reset_token(token)
+    now = datetime.now(timezone.utc)
+    matching_token: Document | None = None
+
+    for token_doc in tokens:
+        if token_doc.get("token_hash") == token_hash:
+            matching_token = token_doc
+            break
+
+    if matching_token is None or matching_token.get("used_at") is not None:
+        return False
+
+    try:
+        expires_at = datetime.fromisoformat(matching_token["expires_at"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= now:
+        return False
+
+    users = get_db().table(USERS_TABLE)
+    user = users.get(doc_id=matching_token.get("user_id"))
+    if user is None or not user.get("is_active", True):
+        return False
+
+    users.update({"hashed_password": _hash_password(new_password)}, doc_ids=[user.doc_id])
+    used_at = now.isoformat()
+    for token_doc in tokens:
+        if token_doc.get("user_id") == user.doc_id and token_doc.get("used_at") is None:
+            tokens.update({"used_at": used_at}, doc_ids=[token_doc.doc_id])
+    return True
+
+
+def change_password(user_id: int, current_password: str, new_password: str) -> str:
+    """Cambia la contraseña de un usuario tras verificar la contraseña actual."""
+    users = get_db().table(USERS_TABLE)
+    user = users.get(doc_id=user_id)
+    if user is None or not _verify_password(current_password, user["hashed_password"]):
+        return "invalid_current"
+    if _verify_password(new_password, user["hashed_password"]):
+        return "same_password"
+
+    users.update({"hashed_password": _hash_password(new_password)}, doc_ids=[user_id])
+    return "updated"
 
 
 # ──────────────────────────────────────────────
