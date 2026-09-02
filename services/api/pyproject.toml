@@ -16,6 +16,7 @@ dependencies = [
   "pydantic[email]==2.11.7",
   "python-jose[cryptography]",
   "libpass[bcrypt]",
+  "resend>=2.0,<3.0",
 ]
 
 [project.scripts]
@@ -31,4 +32,4 @@ package = true
 py-modules = ["seed", "database", "models", "main"]
 
 # Incluye los paquetes routes/ y auth/ para que uv los reconozca.
-packages = ["routes", "routes.*", "auth", "auth.*"]
+packages = ["routes", "routes.*", "auth", "auth.*", "notifications", "notifications.*"]
