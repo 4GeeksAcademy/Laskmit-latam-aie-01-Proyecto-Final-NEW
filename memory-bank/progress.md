@@ -43,7 +43,19 @@
 - Hito 5: actualmente documentado, sin implementacion completa de endpoints de inventario.
 - Analizador de incidencias: existe implementacion base, CLI + API + UI. Debe seguir flujo de gobernanza antes de nuevos cambios.
 
+## Gestor centralizado de incidencias — Implementado
+- [x] Modelo persistente TinyDB con dominio cerrado, timestamps UTC y ciclo de vida validado.
+- [x] Endpoints protegidos de alta, listado con filtros, detalle, cambio de estado y resumen.
+- [x] Conservados `/api/incidents/health`, `/analyze` y `/results/export` sin cambios de contrato.
+- [x] Seed idempotente desde `data/raw/incidents-nexova.csv`, reutilizando `shared/incidents_analysis.py`.
+- [x] Verificados 96 registros validos: estados 27/56/13 y categorias 49/35/12.
+- [x] Vista `/incidents` integrada en backoffice con formulario, filtros, listado, transiciones y resumen.
+- [x] Pruebas backend: 10 aprobadas; quedan 5 advertencias preexistentes por `datetime.utcnow()` en AUTH-03.
+- [x] `uis/backoffice`: lint sin errores (1 advertencia preexistente en Talent Pipeline) y build aprobado.
+- [x] `uis/website`: lint sin errores (1 advertencia preexistente en registro) y build aprobado.
+- [x] Comprobacion HTTP: health `200`, gestor sin token `401` y ruta frontend `/incidents` `200`.
+
 ## Siguientes pasos
-1. Ejecutar validacion visual manual (`npm run dev`) en `uis/website` y `uis/backoffice`.
+1. Completar la matriz visual autenticada y adjuntar capturas del formulario, listado y resumen al PR.
 2. Consolidar backlog tecnico de Hito 5 (inventario) dentro de `services/`.
-3. Mantener actualizacion continua del banco de memoria por cada entrega.
+3. Corregir en un cambio separado las advertencias preexistentes de AUTH-03, Talent Pipeline y registro web.

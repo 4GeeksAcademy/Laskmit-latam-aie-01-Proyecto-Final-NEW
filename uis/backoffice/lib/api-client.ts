@@ -14,6 +14,7 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly details: FastApiValidationError[] = [],
+    public readonly field: string | null = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -41,7 +42,14 @@ async function parseError(response: Response): Promise<ApiError> {
     : `La solicitud falló con estado ${response.status}.`;
 
   try {
-    const payload = (await response.json()) as { detail?: unknown };
+    const payload = (await response.json()) as {
+      detail?: unknown;
+      error?: { field?: unknown; message?: unknown };
+    };
+    if (payload.error && typeof payload.error.message === "string") {
+      const field = typeof payload.error.field === "string" ? payload.error.field : null;
+      return new ApiError(payload.error.message, response.status, [], field);
+    }
     if (typeof payload.detail === "string") {
       return new ApiError(payload.detail, response.status);
     }
