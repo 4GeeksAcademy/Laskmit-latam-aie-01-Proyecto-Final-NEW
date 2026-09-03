@@ -5,7 +5,7 @@ Este proyecto requiere del archivo: CONTEXT-sin-hito-06-centralized-incident-man
 Con esta información se definirán:
 - La estructura de datos de incidencias, los nombres de campos, categorías válidas, sedes de la empresa y los valores semilla esperados para la implementación.
 - Este proyecto extiende el trabajo del analizador de incidencias. Reutiliza la base de datos, la estructura de la API y la arquitectura del frontend existentes.
-- Los nombres de campos, categorías, sedes y valores de la implementación deben coincidir exactamente con lo especificado en el archivo CONTEXT-xxxxx.md indicado antes. Una implementación genérica que ignore el contexto no será aceptada.
+- Los nombres de campos, categorías, sedes y valores de la implementación deben coincidir exactamente con lo especificado en el archivo CONTEXT-sin-hito-06-centralized-incident-manager-nexova.es.md indicado antes. Una implementación genérica que ignore el contexto no será aceptada.
 
 ## Descripción del Proyecto
 

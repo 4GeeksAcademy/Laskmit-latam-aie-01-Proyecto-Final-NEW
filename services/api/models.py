@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, EmailStr, Field, PositiveFloat, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, PositiveFloat, field_validator, model_validator
 
 
 # Enumeraciones cerradas para alinear los valores válidos con el CONTEXT.
@@ -74,3 +74,80 @@ class SupplierRateUpdate(BaseModel):
 # Payload dedicado para cambio de estado.
 class SupplierStatusUpdate(BaseModel):
     status: SupplierStatus
+
+
+class IncidentCategory(str, Enum):
+    TECHNICAL_FAILURE = "technical_failure"
+    PROCESS_ERROR = "process_error"
+    CLIENT_COMPLAINT = "client_complaint"
+    CANDIDATE_ISSUE = "candidate_issue"
+    STAFF_ISSUE = "staff_issue"
+    SLA_BREACH = "sla_breach"
+    DATA_QUALITY = "data_quality"
+    OTHER = "other"
+
+
+class IncidentStatus(str, Enum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    DISCARDED = "discarded"
+
+
+class IncidentOrigin(str, Enum):
+    CUSTOMER = "customer"
+    BRANCH = "branch"
+    INTERNAL = "internal"
+
+
+class IncidentBranch(str, Enum):
+    CENTRAL = "central"
+    VALENCIA_OPERATIONS = "valencia_operations"
+    MIAMI_OFFICE = "miami_office"
+    REMOTE = "remote"
+
+
+class IncidentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1)
+    category: IncidentCategory
+    origin: IncidentOrigin
+    branch: IncidentBranch
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("El titulo es obligatorio.")
+        return normalized
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("La descripcion es obligatoria.")
+        return value
+
+
+class IncidentStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: IncidentStatus
+
+
+class IncidentResponse(IncidentCreate):
+    id: int
+    status: IncidentStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class IncidentSummary(BaseModel):
+    total: int
+    by_status: dict[IncidentStatus, int]
+    by_category: dict[IncidentCategory, int]
+    by_origin: dict[IncidentOrigin, int]
+    by_branch: dict[IncidentBranch, int]
