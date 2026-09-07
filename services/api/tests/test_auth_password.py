@@ -11,7 +11,7 @@ from tinydb.storages import MemoryStorage
 from services.api.auth import dependencies as auth_dependencies
 from services.api.auth import services as auth_services
 from services.api.main import app
-from services.api.notifications.resend_client import EmailDeliveryError
+from services.api.notifications.resend_client import EmailConfigurationError, EmailDeliveryError
 
 
 class AuthPasswordEndpointsTest(unittest.TestCase):
@@ -138,6 +138,21 @@ class AuthPasswordEndpointsTest(unittest.TestCase):
         stored = self.db.table(auth_services.PASSWORD_RESET_TOKENS_TABLE).all()[0]
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(stored["used_at"])
+
+    def test_email_configuration_failure_keeps_generic_response_and_invalidates_token(self) -> None:
+        with patch(
+            "services.api.routes.auth.send_password_reset_email",
+            side_effect=EmailConfigurationError("configuration detail"),
+        ):
+            response = self.client.post(
+                "/auth/forgot-password",
+                json={"email": "user@example.com"},
+            )
+
+        stored = self.db.table(auth_services.PASSWORD_RESET_TOKENS_TABLE).all()[0]
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(stored["used_at"])
+        self.assertNotIn("configuration detail", response.text)
 
 
 if __name__ == "__main__":

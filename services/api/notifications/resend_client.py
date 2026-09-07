@@ -5,6 +5,11 @@ import os
 from urllib.parse import quote, urlparse
 
 import resend
+from resend.exceptions import ResendError
+
+
+class EmailConfigurationError(RuntimeError):
+    """Indica que el cliente de correo no tiene una configuración válida."""
 
 
 class EmailDeliveryError(RuntimeError):
@@ -20,19 +25,25 @@ def _frontend_url() -> str:
 
 
 def send_password_reset_email(recipient: str, token: str, expires_at: datetime) -> None:
-    try:
-        api_key = os.getenv("RESEND_API_KEY", "")
-        if not api_key:
-            raise ValueError("RESEND_API_KEY is not configured.")
+    api_key = os.getenv("RESEND_API_KEY", "")
+    if not api_key:
+        raise EmailConfigurationError("Email delivery is not configured.")
 
-        resend.api_key = api_key
-        reset_url = f"{_frontend_url()}/reset-password?token={quote(token, safe='')}"
-        expires_label = expires_at.strftime("%H:%M UTC")
-        body = (
-            "Recibimos una solicitud para restablecer tu contrasena de Nexova.\n\n"
-            f"Abre este enlace antes de las {expires_label}:\n{reset_url}\n\n"
-            "Si no solicitaste este cambio, ignora este mensaje."
-        )
+    try:
+        frontend_url = _frontend_url()
+    except ValueError as error:
+        raise EmailConfigurationError("Email delivery is not configured.") from error
+
+    resend.api_key = api_key
+    reset_url = f"{frontend_url}/reset-password?token={quote(token, safe='')}"
+    expires_label = expires_at.strftime("%H:%M UTC")
+    body = (
+        "Recibimos una solicitud para restablecer tu contrasena de Nexova.\n\n"
+        f"Abre este enlace antes de las {expires_label}:\n{reset_url}\n\n"
+        "Si no solicitaste este cambio, ignora este mensaje."
+    )
+
+    try:
         resend.Emails.send(
             {
                 "from": os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
@@ -41,5 +52,5 @@ def send_password_reset_email(recipient: str, token: str, expires_at: datetime) 
                 "text": body,
             }
         )
-    except Exception as error:
+    except ResendError as error:
         raise EmailDeliveryError("Resend did not accept the email.") from error

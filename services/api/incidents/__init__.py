@@ -1,4 +1,4 @@
-from services.api.incidents.service import (
+from .service import (
     InvalidStatusTransitionError,
     create_incident,
     get_incident,
