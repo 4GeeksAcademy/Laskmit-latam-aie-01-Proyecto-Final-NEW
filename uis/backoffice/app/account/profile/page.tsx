@@ -25,6 +25,8 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<EditableProfile>(EMPTY_PROFILE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -32,13 +34,15 @@ export default function ProfilePage() {
     let active = true;
 
     async function loadProfile(): Promise<void> {
+      setLoading(true);
+      setLoadError("");
       try {
         const currentUser = await apiRequest<CurrentUser>("/auth/me");
         if (!active) return;
         setUser(currentUser);
         setProfile(editableProfile(currentUser.profile));
       } catch (requestError) {
-        if (active) setError(getErrorMessage(requestError));
+        if (active) setLoadError(getErrorMessage(requestError));
       } finally {
         if (active) setLoading(false);
       }
@@ -48,7 +52,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadAttempt]);
 
   function updateField(field: keyof EditableProfile, value: string): void {
     setProfile((current) => ({ ...current, [field]: value }));
@@ -81,6 +85,21 @@ export default function ProfilePage() {
 
   if (loading) {
     return <main className="profilePage" role="status">Cargando perfil...</main>;
+  }
+
+  if (loadError || !user) {
+    return (
+      <main className="profilePage">
+        <section className="profilePanel" aria-labelledby="profile-title">
+          <p className="authEyebrow">Cuenta Nexova</p>
+          <h1 id="profile-title">No se pudo cargar tu perfil</h1>
+          <p className="authError" role="alert">{loadError || "No se pudo obtener la información del perfil."}</p>
+          <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
+            Reintentar
+          </button>
+        </section>
+      </main>
+    );
   }
 
   return (

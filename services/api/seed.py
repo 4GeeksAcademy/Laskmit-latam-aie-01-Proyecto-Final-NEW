@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import os
+import sys
 
 from dotenv import load_dotenv
 from passlib.hash import bcrypt as bcrypt_hasher
+from pydantic import ValidationError
 from tinydb import Query
 
 # Fallback de imports para soportar ejecución desde distintos cwd.
@@ -18,17 +21,6 @@ except ModuleNotFoundError:
 
 # Cargar variables de entorno para obtener credenciales del admin.
 load_dotenv()
-
-import os
-
-ADMIN_EMAIL = os.getenv("USUARIO_ADMINISTRADOR")
-ADMIN_PASSWORD = os.getenv("CLAVE_ADMINISTRADOR")
-
-if not ADMIN_EMAIL or not ADMIN_PASSWORD:
-    raise RuntimeError(
-        "Faltan variables de entorno: USUARIO_ADMINISTRADOR y/o CLAVE_ADMINISTRADOR. "
-        "Defínelas en el archivo .env"
-    )
 
 # Dataset oficial solicitado por negocio para no iniciar con base vacía.
 SUPPLIERS_SEED = [
@@ -191,25 +183,43 @@ SUPPLIERS_SEED = [
 ]
 
 
-def main() -> None:
-    # ── 1. Crear/asegurar usuario administrador ──────────────────────
-    db = get_db()
-    users_table = db.table("users")
-    user_query = Query()
+def _admin_credentials() -> tuple[str, str]:
+    email = os.getenv("USUARIO_ADMINISTRADOR")
+    password = os.getenv("CLAVE_ADMINISTRADOR")
+    if not email or not password:
+        raise ValueError("Administrator credentials are not configured.")
+    return email, password
 
-    existing_admin = users_table.get(user_query.email == ADMIN_EMAIL)
-    if existing_admin:
-        print(f"Admin user '{ADMIN_EMAIL}' already exists. Skipping.")
-    else:
-        admin_domain = UserDomain(
-            email=ADMIN_EMAIL,
-            hashed_password=bcrypt_hasher.hash(ADMIN_PASSWORD),
-            role=UserRole.ADMIN,
-            is_active=True,
-            created_at=datetime.now(timezone.utc),
-        )
-        users_table.insert(admin_domain.model_dump(mode="json"))
-        print(f"Admin user '{ADMIN_EMAIL}' created successfully.")
+
+def main() -> int:
+    try:
+        admin_email, admin_password = _admin_credentials()
+    except ValueError:
+        print("Error: administrator credentials are not configured.", file=sys.stderr)
+        return 1
+
+    # ── 1. Crear/asegurar usuario administrador ──────────────────────
+    try:
+        db = get_db()
+        users_table = db.table("users")
+        user_query = Query()
+
+        existing_admin = users_table.get(user_query.email == admin_email)
+        if existing_admin:
+            print(f"Admin user '{admin_email}' already exists. Skipping.")
+        else:
+            admin_domain = UserDomain(
+                email=admin_email,
+                hashed_password=bcrypt_hasher.hash(admin_password),
+                role=UserRole.ADMIN,
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+            )
+            users_table.insert(admin_domain.model_dump(mode="json"))
+            print(f"Admin user '{admin_email}' created successfully.")
+    except (OSError, ValueError, ValidationError):
+        print("Error: unable to seed the administrator account.", file=sys.stderr)
+        return 1
 
     # ── 2. Carga idempotente de proveedores ─────────────────────────
     suppliers_table = get_suppliers_table()
@@ -218,27 +228,32 @@ def main() -> None:
     inserted = 0
     skipped = 0
 
-    for raw_supplier in SUPPLIERS_SEED:
-        # Reutiliza validación Pydantic para asegurar consistencia del seed.
-        supplier = SupplierCreate.model_validate(raw_supplier)
-        existing = suppliers_table.get(
-            (supplier_query.name == supplier.name)
-            & (supplier_query.country == supplier.country.value)
-        )
-        if existing:
-            skipped += 1
-            continue
+    try:
+        for raw_supplier in SUPPLIERS_SEED:
+            # Reutiliza validación Pydantic para asegurar consistencia del seed.
+            supplier = SupplierCreate.model_validate(raw_supplier)
+            existing = suppliers_table.get(
+                (supplier_query.name == supplier.name)
+                & (supplier_query.country == supplier.country.value)
+            )
+            if existing:
+                skipped += 1
+                continue
 
-        payload = supplier.model_dump(mode="json")
-        # El timestamp inicial también lo define el backend.
-        payload["updated_at"] = datetime.now(timezone.utc).isoformat()
-        suppliers_table.insert(payload)
-        inserted += 1
+            payload = supplier.model_dump(mode="json")
+            # El timestamp inicial también lo define el backend.
+            payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+            suppliers_table.insert(payload)
+            inserted += 1
+    except (OSError, ValueError, ValidationError):
+        print("Error: unable to seed suppliers.", file=sys.stderr)
+        return 1
 
     print(
         f"Seeder completed. total={len(SUPPLIERS_SEED)} inserted={inserted} skipped={skipped}"
     )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

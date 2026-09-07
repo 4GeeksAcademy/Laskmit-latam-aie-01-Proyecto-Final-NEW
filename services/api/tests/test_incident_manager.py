@@ -97,6 +97,29 @@ class IncidentManagerTest(unittest.TestCase):
         response = self.client.get("/api/incidents")
         self.assertEqual(response.status_code, 401)
 
+    @patch(
+        "services.api.routes.incidents.analyze_csv_bytes",
+        side_effect=RuntimeError("internal path /srv/private.csv"),
+    )
+    def test_analyze_hides_unexpected_error_details(self, _mock_analyze) -> None:
+        response = self.client.post(
+            "/api/incidents/analyze",
+            files={"file": ("incidents.csv", b"id,title\n1,test", "text/csv")},
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json(), {"detail": "Unable to analyze the file."})
+        self.assertNotIn("private.csv", response.text)
+
+    def test_analyze_returns_clean_error_for_invalid_csv(self) -> None:
+        response = self.client.post(
+            "/api/incidents/analyze",
+            files={"file": ("incidents.csv", b"invalid-header\nvalue", "text/csv")},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIsInstance(response.json().get("detail"), str)
+
     def test_historical_seed_is_idempotent(self) -> None:
         csv_path = Path(__file__).resolve().parents[3] / "data" / "raw" / "incidents-nexova.csv"
         first = seed_incidents(csv_path, self.incidents, self.seed_keys)

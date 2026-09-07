@@ -55,6 +55,64 @@
 - [x] `uis/website`: lint sin errores (1 advertencia preexistente en registro) y build aprobado.
 - [x] Comprobacion HTTP: health `200`, gestor sin token `401` y ruta frontend `/incidents` `200`.
 
+## Auditoría de gestión de errores — Implementada (Sin Hito 07)
+
+Los 13 hallazgos del informe de auditoría fueron corregidos siguiendo el orden recomendado del SPECS:
+
+### Hallazgos corregidos
+
+| Hallazgo | Severidad | Cambio |
+|---|---|---|
+| ALTO-01 — Cliente HTTP comparte mensajes del backend | ALTO | `api-client.ts`: mapeo público por código HTTP, parseo JSON protegido, `getErrorMessage` con fallback fijo |
+| ALTO-02 — Talent Pipeline expone errores externos | ALTO | `talentTrackerApi.ts`: catálogo público por estado, red protegida |capturada, JSON inválido con mensaje fijo |
+| ALTO-03 — CSV captura `Exception` y muestra `str(error)` | ALTO | `routes/incidents.py`: la lectura de archivo protegida, `except Exception` → logger + `500` fijo |
+| ALTO-04 — Perfil editable sin carga | ALTO | `profile/page.tsx`: estado de error excluyente con `Reintentar` y formulario inhabilitado |
+| MEDIO-01 — Registro público muestra códigos HTTP | MEDIO | `RegistroForm.tsx`: mensajes públicos por estado, fallo de red genérico |
+| MEDIO-02 — JSON exitoso sin parseo protegido | MEDIO | `api-client.ts` y `talentTrackerApi.ts`: captura en `response.json()` con `ApiError` estable |
+| MEDIO-03 — Listado candidaturas sin reintento | MEDIO | `CandidatesPageClient.tsx`: botón `Reintentar` que refresca usando `refreshToken` |
+| MEDIO-04 — Detalle/notas sin reintento | MEDIO | `CandidateDetailClient.tsx`: botones `Reintentar candidatura` y `Reintentar notas` |
+| MEDIO-05 — Lectura archivo CSV sin manejo | MEDIO | `routes/incidents.py`: `try/except (OSError, RuntimeError)` antes del análisis |
+| MEDIO-06 — Exportación CLI falla sin diagnóstico | MEDIO | `scripts/analyze.py`: `try/except OSError` en `mkdir` + `write_bytes`, stderr sanitizado y código `1` |
+| MEDIO-07 — Seeder no traduce fallos | MEDIO | `seed.py`: validación en `main()`, capturas por operación (configuración/validación/I/O), stderr fijo |
+| MEDIO-08 — Correo captura todo en un bloque | MEDIO | `resend_client.py`: validación separada (`EmailConfigurationError`), captura acotada a `ResendError` |
+| BAJO-01 — Cliente estático heredado inseguro | BAJO | `app.js` y `incidents-app.js`: mensajes públicos por estado, parseo protegido, red sanitizada |
+
+### Pruebas añadidas
+- `test_incident_manager.py`: 3 nuevas pruebas de errores (`test_analyze_hides_unexpected_error_details`, `test_analyze_returns_clean_error_for_invalid_csv`, idempotencia del seed)
+- `test_analyze_cli.py`: 1 prueba de fallo de exportación con stderr sanitizado
+- `test_seed_cli.py`: 2 pruebas de configuración ausente y fallo de base de datos
+- `test_auth_password.py`: 1 prueba de `EmailConfigurationError`
+
+### Validación
+- [x] Backend: 16 pruebas aprobadas (0 errores, advertencias `utcnow()` preexistentes)
+- [x] `uis/backoffice`: lint 0 errores (1 advertencia `summary` preexistente), build exitoso
+- [x] `uis/website`: lint 0 errores (1 advertencia `router` preexistente), build exitoso
+- [x] 16 archivos modificados, +363 -168 líneas
+- [x] No se modificaron rutas protegidas
+- [x] Script de verificación autónomo creado: `evidencias-pruebas/error-handling-audit/verify_evidence.sh`
+- [x] Archivo de evidencia generado: `error-handling-audit-evidencia-pruebas.md`
+
+### Resultado final de verificación: 16 PASS / 0 FAIL
+
+| Verificación | Estado |
+|---|---|
+| Backend — Suite completa (16 tests) | PASS |
+| Incident Manager (7 tests) | PASS |
+| Auth Password (6 tests) | PASS |
+| Analyze CLI exportación (1 test) | PASS |
+| Seed CLI protegido (2 tests) | PASS |
+| Backoffice — ESLint | PASS |
+| Backoffice — Next.js build (12 rutas) | PASS |
+| Website — ESLint | PASS |
+| Website — Next.js build (3 rutas) | PASS |
+| Exposición residual — 0 fugas | PASS |
+| Talent Pipeline — catálogo público | PASS |
+| Endpoint CSV — logger.exception | PASS |
+| Correo — Config vs envío separados | PASS |
+| Seeder — importable sin env vars | PASS |
+| Clientes JS legacy — sintaxis OK | PASS |
+| Control de cambios — 16 archivos | INFO |
+
 ## Siguientes pasos
 1. Completar la matriz visual autenticada y adjuntar capturas del formulario, listado y resumen al PR.
 2. Consolidar backlog tecnico de Hito 5 (inventario) dentro de `services/`.

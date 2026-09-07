@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse, Response
@@ -52,6 +53,9 @@ except ModuleNotFoundError:
         export_result_to_csv_bytes,
         result_to_summary_dict,
     )
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
@@ -170,7 +174,12 @@ async def analyze_incidents(
     if not file.filename:
         raise HTTPException(status_code=400, detail="A CSV file is required.")
 
-    content = await file.read()
+    try:
+        content = await file.read()
+    except (OSError, RuntimeError) as error:
+        logger.warning("Unable to read uploaded incidents CSV", exc_info=error)
+        raise HTTPException(status_code=400, detail="Unable to read the uploaded file.") from error
+
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
@@ -181,7 +190,8 @@ async def analyze_incidents(
     except InvalidCsvFormatError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:
-        raise HTTPException(status_code=400, detail=f"Invalid CSV file: {error}") from error
+        logger.exception("Unexpected error while analyzing incidents CSV")
+        raise HTTPException(status_code=500, detail="Unable to analyze the file.") from error
 
     summary = result_to_summary_dict(result)
     export_csv_bytes = export_result_to_csv_bytes(result)

@@ -62,12 +62,6 @@ export interface RecordNotesResponse {
   };
 }
 
-interface ValidationErrorDetail {
-  loc: Array<string | number>;
-  msg: string;
-  type: string;
-}
-
 export interface ListRecordsParams {
   status?: CandidateStatus;
   stage?: CandidateStage;
@@ -124,64 +118,39 @@ function buildQueryParams(params: ListRecordsParams): string {
   return searchParams.toString();
 }
 
-function buildErrorFromBody(errorBody: unknown, statusCode: number): ApiError {
-  if (
-    errorBody &&
-    typeof errorBody === "object" &&
-    "detail" in errorBody
-  ) {
-    const detail = (errorBody as { detail?: unknown }).detail;
-
-    if (typeof detail === "string") {
-      return new ApiError(detail, statusCode);
-    }
-
-    if (Array.isArray(detail)) {
-      const messages = detail
-        .map((entry) => {
-          if (
-            entry &&
-            typeof entry === "object" &&
-            "msg" in entry &&
-            typeof (entry as ValidationErrorDetail).msg === "string"
-          ) {
-            return (entry as ValidationErrorDetail).msg;
-          }
-
-          return null;
-        })
-        .filter((entry): entry is string => Boolean(entry));
-
-      if (messages.length > 0) {
-        return new ApiError(messages.join(" "), statusCode, messages);
-      }
-    }
+function getPublicErrorMessage(statusCode: number): string {
+  if (statusCode === 400 || statusCode === 422) {
+    return "Revisa los datos de la candidatura e inténtalo de nuevo.";
   }
-
-  return new ApiError(`Error ${statusCode}`, statusCode);
+  if (statusCode === 404) {
+    return "No se encontró la candidatura solicitada.";
+  }
+  if (statusCode === 409) {
+    return "La candidatura cambió y no se pudo completar la operación.";
+  }
+  if (statusCode >= 500) {
+    return "El servicio de candidaturas no está disponible temporalmente.";
+  }
+  return "No se pudo completar la operación con la candidatura.";
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError("No se pudo conectar con el servicio de candidaturas.", 0);
+  }
 
   if (!response.ok) {
-    let apiError = new ApiError(`Error ${response.status}`, response.status);
-
-    try {
-      const errorBody = (await response.json()) as unknown;
-      apiError = buildErrorFromBody(errorBody, response.status);
-    } catch {
-      // Mantener error basado en status cuando no haya JSON.
-    }
-
-    throw apiError;
+    throw new ApiError(getPublicErrorMessage(response.status), response.status);
   }
 
   if (response.status === 204) {
@@ -190,10 +159,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
-    return undefined as T;
+    throw new ApiError("El servicio de candidaturas devolvió una respuesta no válida.", response.status);
   }
 
-  return (await response.json()) as T;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError("El servicio de candidaturas devolvió una respuesta no válida.", response.status);
+  }
 }
 
 export async function listCandidateRecords(

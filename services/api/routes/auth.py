@@ -18,7 +18,11 @@ try:
         ResetPasswordRequest,
         Token,
     )
-    from services.api.notifications.resend_client import EmailDeliveryError, send_password_reset_email
+    from services.api.notifications.resend_client import (
+        EmailConfigurationError,
+        EmailDeliveryError,
+        send_password_reset_email,
+    )
 except ModuleNotFoundError:
     from auth import dependencies as auth_deps  # type: ignore[no-redef]
     from auth import services as auth_services  # type: ignore[no-redef]
@@ -31,7 +35,11 @@ except ModuleNotFoundError:
         ResetPasswordRequest,
         Token,
     )
-    from notifications.resend_client import EmailDeliveryError, send_password_reset_email  # type: ignore[no-redef]
+    from notifications.resend_client import (  # type: ignore[no-redef]
+        EmailConfigurationError,
+        EmailDeliveryError,
+        send_password_reset_email,
+    )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -67,6 +75,9 @@ def forgot_password(payload: ForgotPasswordRequest) -> PasswordActionResponse:
         token, expires_at = reset_data
         try:
             send_password_reset_email(str(payload.email), token, expires_at)
+        except EmailConfigurationError:
+            auth_services.invalidate_password_reset_token(token)
+            logger.error("Password reset email configuration is invalid.")
         except EmailDeliveryError:
             auth_services.invalidate_password_reset_token(token)
             logger.warning("Password reset email delivery failed.")
