@@ -102,9 +102,13 @@ def main() -> int:
 
     if export_choice == "y":
         output_dir = REPO_ROOT / "data" / "process"
-        output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / "results.csv"
-        output_path.write_bytes(export_result_to_csv_bytes(result))
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(export_result_to_csv_bytes(result))
+        except OSError:
+            print("Error: unable to export results.", file=sys.stderr)
+            return 1
         print(f"Results exported to {output_path.relative_to(REPO_ROOT)}")
 
     return 0

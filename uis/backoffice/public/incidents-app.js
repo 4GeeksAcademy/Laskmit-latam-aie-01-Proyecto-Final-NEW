@@ -134,16 +134,26 @@ async function analyzeCsv() {
       body: formData,
     });
 
-    const payload = await response.json();
-
     if (!response.ok) {
-      throw new Error(payload.detail || 'No se pudo analizar el archivo.');
+      const message = response.status >= 500
+        ? 'El servicio no está disponible temporalmente.'
+        : 'Revisa el archivo CSV e inténtalo de nuevo.';
+      showFeedback(message, true);
+      return;
+    }
+
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      showFeedback('El servicio devolvió una respuesta no válida.', true);
+      return;
     }
 
     renderSummary(payload.summary);
     showFeedback(`Análisis completado para ${payload.source_file}`);
-  } catch (error) {
-    showFeedback(error.message || 'Error inesperado al analizar el archivo.', true);
+  } catch {
+    showFeedback('No se pudo conectar con el servicio. Comprueba tu conexión.', true);
   } finally {
     analyzeButton.disabled = false;
     analyzeButton.textContent = 'Analizar archivo';

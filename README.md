@@ -51,7 +51,7 @@ _Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Ac
 Ejecuta estos comandos desde la raíz del repositorio:
 
 ```bash
-# Dependencias de la API
+# Dependencias de la API      (ojo esto siempre hay que correrlo)
 cd services/api
 pip install -r requirements.txt
 

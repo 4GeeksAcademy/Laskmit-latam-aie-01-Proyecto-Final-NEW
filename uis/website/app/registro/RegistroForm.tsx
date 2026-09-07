@@ -160,15 +160,21 @@ export function RegistroForm() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error del servidor: ${response.status}`);
+        const message = response.status === 400 || response.status === 422
+          ? "Revisa los datos del formulario e intenta de nuevo."
+          : response.status >= 500
+            ? "El servicio no está disponible temporalmente. Intenta más tarde."
+            : "No se pudo completar el registro. Intenta de nuevo.";
+        setFeedback({ tone: "error", message });
+        return;
       }
 
       setSubmitted(true);
       setFeedback({ tone: "success", message: "Registro completado con éxito." });
-    } catch (error) {
+    } catch {
       setFeedback({
         tone: "error",
-        message: error instanceof Error ? error.message : "No se pudo completar el registro. Intenta de nuevo.",
+        message: "No se pudo conectar con el servicio. Comprueba tu conexión e intenta de nuevo.",
       });
     } finally {
       setIsSubmitting(false);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
+  ApiError,
   addCandidateNote,
   deleteCandidateNote,
   getCandidateNotes,
@@ -42,7 +43,7 @@ function toFormValues(record: CandidateRecord): CandidateFormValues {
 }
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  return error instanceof Error ? error.message : fallbackMessage;
+  return error instanceof ApiError ? error.message : fallbackMessage;
 }
 
 function feedbackClass(tone: OperationFeedback["tone"]): string {
@@ -293,9 +294,12 @@ export function CandidateDetailClient() {
         )}
 
         {recordState === "error" && (
-          <p className={styles.error}>
-            Error al cargar la candidatura: {recordError}
-          </p>
+          <div className={styles.error} role="alert">
+            <p>Error al cargar la candidatura: {recordError}</p>
+            <button type="button" className={styles.backLink} onClick={() => void loadRecord()}>
+              Reintentar candidatura
+            </button>
+          </div>
         )}
 
         {record && (
@@ -420,7 +424,12 @@ export function CandidateDetailClient() {
             )}
 
             {notesState === "error" && (
-              <p className={styles.error}>Error al cargar notas: {notesError}</p>
+              <div className={styles.error} role="alert">
+                <p>Error al cargar notas: {notesError}</p>
+                <button type="button" className={styles.backLink} onClick={() => void loadNotes()}>
+                  Reintentar notas
+                </button>
+              </div>
             )}
 
             {notesState === "success" && notes.length === 0 && (

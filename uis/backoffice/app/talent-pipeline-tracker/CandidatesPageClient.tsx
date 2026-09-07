@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  ApiError,
   createCandidateRecord,
   type CandidateRecord,
   type CandidateRecordInput,
@@ -103,7 +104,7 @@ export default function CandidatesPageClient() {
           setRecords([]);
           setRequestState("error");
           setErrorMessage(
-            error instanceof Error
+            error instanceof ApiError
               ? error.message
               : "No se pudieron cargar las candidaturas.",
           );
@@ -211,9 +212,16 @@ export default function CandidatesPageClient() {
         )}
 
         {requestState === "error" && (
-          <p className={styles.error}>
-            Error al cargar candidaturas: {errorMessage}
-          </p>
+          <div className={styles.error} role="alert">
+            <p>Error al cargar candidaturas: {errorMessage}</p>
+            <button
+              type="button"
+              className={styles.backLink}
+              onClick={() => setRefreshToken((currentValue) => currentValue + 1)}
+            >
+              Reintentar
+            </button>
+          </div>
         )}
 
         {requestState === "success" && records.length === 0 && (
