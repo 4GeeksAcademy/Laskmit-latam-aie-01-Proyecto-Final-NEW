@@ -37,3 +37,10 @@ py-modules = ["seed", "database", "models", "main"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["routes*", "auth*", "notifications*", "incidents*"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+]
