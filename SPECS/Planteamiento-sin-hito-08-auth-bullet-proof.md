@@ -48,7 +48,7 @@ FastAPI — pytest
 
 TypeScript — Jest (si el proyecto incluye lógica de utilidades en TypeScript)
 **Nota:** Para este Paso 02 no aplica este punto, pero cuando hagamos el PASO 04 si podremos evaluar si aplica y asi utilizar Jest.
-[ ] Configura Jest con un archivo jest.config.ts o jest.config.js en la raíz de tu proyecto TypeScript.
+[ ] Configura Jest con un archivo jest.config.ts o jes" t.config.js en la raíz de tu proyecto TypeScript.
 [ ] Escribe pruebas unitarias para cualquier función de utilidad relacionada con la autenticación (generación de tokens, validación, helpers de hash de contraseñas).
 [ ] Para cada función, implementa como mínimo: una prueba de camino feliz y una prueba de modo de fallo.
 [ ] Todas las pruebas deben pasar al ejecutar jest --coverage.

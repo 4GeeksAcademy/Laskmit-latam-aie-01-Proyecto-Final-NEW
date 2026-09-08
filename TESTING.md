@@ -3,23 +3,34 @@
 ## Cómo ejecutar las pruebas
 
 ```bash
-# Desde la raíz del proyecto o desde services/api/
+# Las pruebas deben ejecutarse desde services/api/
 cd services/api
 
-# Ejecutar todas las pruebas
-uv run pytest
+# Ejecutar todas las pruebas (requiere PYTHONPATH)
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/ -v
 
-# Con cobertura
-uv run pytest --cov
-
-# Con cobertura detallada por módulo
-uv run pytest --cov --cov-report=term-missing
+# Con cobertura detallada por módulo de autenticación
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest --cov=services.api.auth --cov=services.api.routes.auth --cov=services.api.routes.users --cov=services.api.routes.profiles tests/ --cov-report=term-missing
 
 # Ejecutar un archivo específico
-uv run pytest tests/test_login.py -v
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/test_login.py -v
 
 # Ejecutar por palabra clave
-uv run pytest -k "login" -v
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest -k "login" -v
+
+## Resultados de cobertura (PASO 02)
+
+| Módulo | Cobertura |
+|--------|-----------|
+| `auth/models.py` | 100% |
+| `auth/services.py` | 93% |
+| `routes/auth.py` | 91% |
+| `routes/users.py` | 91% |
+| `auth/dependencies.py` | 85% |
+| `routes/profiles.py` | 81% |
+| **Total módulos auth** | **92%** |
+
+> 📊 **92% de cobertura** — muy por encima del 70% requerido. 62 pruebas en total (26 nuevas + 36 existentes).
 ```
 
 ## Estructura de la suite
@@ -196,6 +207,17 @@ Usamos `TinyDB` con `MemoryStorage` y un fixture `conftest.py` que reemplaza `ge
 
 ### Auth helpers compartidos
 El `conftest.py` expone funciones helper como `create_test_user()` y `login_as()` para que los tests sean legibles y no dupliquen lógica de setup.
+
+### Flujo asistido por IA (PASO 03)
+La batería de pruebas se complementó con un análisis profundo asistido por IA que identificó **32 casos adicionales** no cubiertos inicialmente. El análisis incluyó:
+
+- **Revisión de seguridad**: se identificaron 4 casos de seguridad (JWT con algoritmo "none", token falsificado, sub no numérico, SECRET_KEY vacío).
+- **Análisis de bordes**: contraseñas Unicode, emails internacionales, timezone edge cases.
+- **Bugs detectados**:
+  1. `datetime.utcnow()` deprecado en `auth/services.py` (línea 103) — genera `DeprecationWarning`.
+  2. `SECRET_KEY` por defecto vacío (`""`) — inseguro en producción.
+  3. `ACCESS_TOKEN_EXPIRE_MINUTES` sin límite máximo — tokens podrían durar años.
+- **Documentación completa**: `TESTING_PASO03.md` contiene todos los casos adicionales identificados, priorizados por nivel de urgencia.
 
 ### Dependencias de testing
 ```bash
