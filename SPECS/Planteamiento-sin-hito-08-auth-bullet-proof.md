@@ -47,6 +47,7 @@ FastAPI — pytest
 [ ] Ejecuta uv run pytest --cov y comprueba que tu batería alcanza al menos 70% de cobertura en el módulo de autenticación.
 
 TypeScript — Jest (si el proyecto incluye lógica de utilidades en TypeScript)
+**Nota:** Para este Paso 02 no aplica este punto, pero cuando hagamos el PASO 04 si podremos evaluar si aplica y asi utilizar Jest.
 [ ] Configura Jest con un archivo jest.config.ts o jest.config.js en la raíz de tu proyecto TypeScript.
 [ ] Escribe pruebas unitarias para cualquier función de utilidad relacionada con la autenticación (generación de tokens, validación, helpers de hash de contraseñas).
 [ ] Para cada función, implementa como mínimo: una prueba de camino feliz y una prueba de modo de fallo.
