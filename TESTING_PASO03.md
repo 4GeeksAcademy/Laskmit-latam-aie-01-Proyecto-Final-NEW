@@ -170,3 +170,26 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 ---
 
 *Documento generado con asistencia de IA tras analizar la lógica de negocio de cada endpoint de autenticación.*
+
+---
+
+## Resultados de implementación
+
+### ✅ Implementado — 29 tests en 7 archivos nuevos
+
+| Archivo | Tests | Casos cubiertos | Estado |
+|---------|-------|-----------------|--------|
+| `test_login_advanced.py` | 8 tests | L1 (72 chars), L1-bis (>72 bytes), L2 (Unicode), L3 (wrong key), L4 (non-numeric sub), L5 (sub=0, sub=-1), L6 (orphan) | ✅ |
+| `test_register_advanced.py` | 4 tests | R1 (intl email), R2 (plus subaddressing), R3 (spaces password), R4 (empty fields) | ✅ |
+| `test_auth_me_advanced.py` | 2 tests | M1 (no Bearer prefix), M2 (empty token) | ✅ |
+| `test_auth_password_advanced.py` | 6 tests | F1 (inactive forgot), F2 (multiple forgot), P1 (inactive reset), P2 (timezone edge), P3 (same password), C1 (deleted user change) | ✅ |
+| `test_profiles_advanced.py` | 3 tests | PR1 (empty body), PR1-bis (null fields), PR2 (long name) | ✅ |
+| `test_users_advanced.py` | 2 tests | D1 (admin self-delete), D2 (double delete) | ✅ |
+| `test_security_jwt.py` | 4 tests | S1 (alg=none), S1-bis (none empty sig), S2 (tampered payload), S3 (empty secret key) | ✅ |
+
+### 📊 Resultados
+
+- **91/91 tests pasan** ✅ (62 anteriores + 29 nuevos)
+- **Cobertura: 93%** (subió de 92%)
+- **7 nuevos helpers** en `conftest.py`: `create_token_with_secret()`, `create_token_with_sub()`, `create_token_with_algorithm_none()`, `delete_user_by_email()`
+- **1 bug confirmado**: `datetime.utcnow()` deprecado en auth/services.py — genera `DeprecationWarning` en todos los tests

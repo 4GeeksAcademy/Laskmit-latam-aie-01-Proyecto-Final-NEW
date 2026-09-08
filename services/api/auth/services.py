@@ -100,7 +100,7 @@ def create_user(
         email=email,
         hashed_password=_hash_password(password),
         role=role,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     created_id = users.insert(user_domain.model_dump(mode="json"))
     created_doc = users.get(doc_id=created_id)

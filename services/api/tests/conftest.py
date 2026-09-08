@@ -127,6 +127,35 @@ def create_malformed_token() -> str:
     return "not.a.valid.jwt"
 
 
+def create_token_with_secret(user_id: int, secret_key: str) -> str:
+    """Genera un JWT firmado con una clave secreta específica."""
+    payload = {
+        "sub": str(user_id),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+    }
+    return jwt.encode(payload, secret_key, algorithm=auth_deps.ALGORITHM)
+
+
+def create_token_with_sub(sub: str, secret_key: str | None = None) -> str:
+    """Genera un JWT con un sub arbitrario (no necesariamente numérico)."""
+    if secret_key is None:
+        secret_key = auth_deps.SECRET_KEY
+    payload = {
+        "sub": sub,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+    }
+    return jwt.encode(payload, secret_key, algorithm=auth_deps.ALGORITHM)
+
+
+def create_token_with_algorithm_none(user_id: int) -> str:
+    """Genera un JWT con algoritmo 'none' (ataque de confusión)."""
+    import json
+    import base64
+    header = base64.urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode()).rstrip(b"=").decode()
+    payload = base64.urlsafe_b64encode(json.dumps({"sub": str(user_id), "exp": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()}).encode()).rstrip(b"=").decode()
+    return f"{header}.{payload}."
+
+
 def make_user_inactive(db: TinyDB, email: str) -> None:
     """Marca un usuario como inactivo en la DB."""
     users = db.table(auth_services.USERS_TABLE)
@@ -134,3 +163,18 @@ def make_user_inactive(db: TinyDB, email: str) -> None:
         if doc.get("email") == email:
             users.update({"is_active": False}, doc_ids=[doc.doc_id])
             return
+
+
+def delete_user_by_email(db: TinyDB, email: str) -> int | None:
+    """Elimina un usuario y su perfil de la DB. Retorna el user_id eliminado o None."""
+    users = db.table(auth_services.USERS_TABLE)
+    profiles = db.table(auth_services.PROFILES_TABLE)
+    for doc in users:
+        if doc.get("email") == email:
+            user_id = doc.doc_id
+            for pdoc in profiles:
+                if pdoc.get("user_id") == user_id:
+                    profiles.remove(doc_ids=[pdoc.doc_id])
+            users.remove(doc_ids=[user_id])
+            return user_id
+    return None

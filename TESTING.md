@@ -7,43 +7,51 @@
 cd services/api
 
 # Ejecutar todas las pruebas (requiere PYTHONPATH)
-PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/ -v
+# -W all  muestra todos los warnings (DeprecationWarning, etc.)
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/ -v -W all
 
 # Con cobertura detallada por módulo de autenticación
-PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest --cov=services.api.auth --cov=services.api.routes.auth --cov=services.api.routes.users --cov=services.api.routes.profiles tests/ --cov-report=term-missing
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest --cov=services.api.auth --cov=services.api.routes.auth --cov=services.api.routes.users --cov=services.api.routes.profiles tests/ --cov-report=term-missing -W all
 
 # Ejecutar un archivo específico
-PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/test_login.py -v
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/test_login.py -v -W all
 
 # Ejecutar por palabra clave
-PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest -k "login" -v
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest -k "login" -v -W all
 
-## Resultados de cobertura (PASO 02)
+## Resultados de cobertura (PASO 03)
 
 | Módulo | Cobertura |
 |--------|-----------|
 | `auth/models.py` | 100% |
-| `auth/services.py` | 93% |
+| `auth/services.py` | 94% |
 | `routes/auth.py` | 91% |
 | `routes/users.py` | 91% |
-| `auth/dependencies.py` | 85% |
+| `auth/dependencies.py` | 88% |
 | `routes/profiles.py` | 81% |
-| **Total módulos auth** | **92%** |
+| **Total módulos auth** | **93%** |
 
-> 📊 **92% de cobertura** — muy por encima del 70% requerido. 62 pruebas en total (26 nuevas + 36 existentes).
+> 📊 **93% de cobertura** — supera el 70% requerido. **91 pruebas en total** (62 del PASO 02 + 29 del PASO 03).
 ```
 
 ## Estructura de la suite
 
 ```
 services/api/tests/
-├── test_auth_password.py     # Pruebas existentes: forgot/reset/change-password
-├── test_login.py             # POST /auth/login
-├── test_register.py          # POST /users (registro público)
-├── test_users.py             # GET/PUT/DELETE /users (CRUD protegido)
-├── test_profiles.py          # GET/PUT /profiles/me
-├── test_auth_me.py           # GET /auth/me
-├── conftest.py               # Fixtures compartidos (cliente, DB temporal, auth helpers)
+├── conftest.py                    # Fixtures compartidos (cliente, DB temporal, auth helpers)
+├── test_auth_password.py          # forgot/reset/change-password (tests originales)
+├── test_login.py                  # POST /auth/login
+├── test_register.py               # POST /users (registro público)
+├── test_users.py                  # GET/PUT/DELETE /users (CRUD protegido)
+├── test_profiles.py               # GET/PUT /profiles/me
+├── test_auth_me.py                # GET /auth/me
+├── test_login_advanced.py         # PASO 03 — Login avanzado (L1-L6)
+├── test_register_advanced.py      # PASO 03 — Register avanzado (R1-R4)
+├── test_auth_me_advanced.py       # PASO 03 — Auth/Me avanzado (M1-M2)
+├── test_auth_password_advanced.py # PASO 03 — Password avanzado (F1-F2, P1-P3, C1)
+├── test_profiles_advanced.py      # PASO 03 — Profiles avanzado (PR1-PR2)
+├── test_users_advanced.py         # PASO 03 — Users avanzado (D1-D2)
+├── test_security_jwt.py           # PASO 03 — Seguridad JWT (S1-S3)
 ```
 
 ## Cobertura por endpoint
@@ -63,6 +71,18 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ❌ Modo fallo | Email no registrado | 401 "Invalid email or password". Sin enumeración de usuarios. |
 | ❌ Modo fallo | Contraseña incorrecta | 401 mismo mensaje genérico. |
 | ❌ Modo fallo | Usuario inactivo | `is_active=false` → 401. |
+| ⚠️ Caso límite | Contraseña de **72 caracteres** (máximo bcrypt) | L1 — Login funciona con contraseña en el límite. |
+| ⚠️ Caso límite | Contraseña **>72 bytes** (bcrypt) | L1-bis — passlib lanza ValueError. |
+| ⚠️ Caso límite | Contraseña con **caracteres Unicode** (ñ, ü, emojis) | L2 — bcrypt funciona correctamente con UTF-8. |
+
+### POST /auth/login — Seguridad adicional (PASO 03)
+
+| # | Tipo | Caso | Qué verifica |
+|---|------|------|-------------|
+| L3 | ❌ Fallo | Token firmado con **SECRET_KEY diferente** | Token falsificado rechazado → 401. |
+| L4 | ❌ Fallo | Token con **`sub` no numérico** (`"abc"`) | ValueError → credentials_exception → 401. |
+| L5 | ❌ Fallo | Token con **`sub` = 0 o negativo** | user_id inválido → 401. |
+| L6 | ❌ Fallo | Token de **usuario eliminado** (orphan token) | Usuario ya no existe en DB → 401. |
 
 ### POST /auth/forgot-password
 
@@ -72,6 +92,8 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ⚠️ Caso límite | Email NO registrado | 200 mismo mensaje genérico. Sin token creado. Sin email enviado. **No enumeración.** |
 | ❌ Modo fallo | Error de configuración de email | 200 genérico. Token invalidado en DB. |
 | ❌ Modo fallo | Error de entrega de email | 200 genérico. Token invalidado. |
+| ❌ Modo fallo | **Usuario inactivo** solicita reset | F1 — Mensaje genérico, no se envía email. Sin enumeración. |
+| ❌ Modo fallo | **Múltiples solicitudes** invalidan token anterior | F2 — Solo el último token es válido. |
 
 ### POST /auth/reset-password
 
@@ -82,6 +104,9 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ⚠️ Caso límite | Token expirado | 400. Contraseña original sigue funcionando. |
 | ❌ Modo fallo | Token inválido (string aleatorio) | 400. |
 | ❌ Modo fallo | Nueva contraseña < 8 caracteres | 422 (validación Pydantic). |
+| ❌ Modo fallo | Token de **usuario inactivo** | P1 — 400, no se permite reset. |
+| ❌ Modo fallo | Token **expirado por segundos** (timezone edge) | P2 — 400, expires_at <= now con timezone aware. |
+| ⚠️ Caso límite | Reset a la **misma contraseña** | P3 — El servicio lo permite (no valida contra history). |
 
 ### POST /auth/change-password
 
@@ -91,6 +116,7 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ⚠️ Caso límite | Misma contraseña actual y nueva | 400 "La nueva contrasena debe ser diferente". |
 | ❌ Modo fallo | Contraseña actual incorrecta | 400 "La contrasena actual no es correcta". |
 | ❌ Modo fallo | Sin token (no autenticado) | 401. |
+| ❌ Modo fallo | **Usuario inexistente** (token de usuario borrado) | C1 — 401, get_current_user lanza exception. |
 
 ### GET /auth/me
 
@@ -103,6 +129,8 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ❌ Modo fallo | Token expirado | 401 "Token has expired". |
 | ❌ Modo fallo | Token malformado | 401 "Could not validate credentials". |
 | ❌ Modo fallo | Usuario inactivo | 401 "Inactive user account". |
+| ❌ Modo fallo | Header sin formato **"Bearer"** | M1 — 401, HTTPBearer(auto_error=False). |
+| ❌ Modo fallo | **Token vacío** (`"Bearer "`) | M2 — 401, JWTError. |
 
 ### POST /users (Registro público)
 
@@ -116,6 +144,10 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ❌ Modo fallo | Email mal formado | 422. |
 | ❌ Modo fallo | Campos vacíos (email vacío) | 422. |
 | ❌ Modo fallo | Intento de auto-asignarse role (no expuesto) | El modelo UserCreate no expone role — se verifica que role sea siempre "user". |
+| ⚠️ Caso límite | Email con **caracteres internacionales** | R1 — Pydantic EmailStr lo acepta o rechaza. |
+| ⚠️ Caso límite | Email con **subdireccionamiento (+)** | R2 — El sistema permite formato `test+tag`. |
+| ❌ Modo fallo | **Contraseña = solo espacios** | R3 — Pydantic Field(min_length=8) acepta espacios. |
+| ❌ Modo fallo | **name/phone/address vacíos** (`""` en vez de null) | R4 — Perfil se crea con campos vacíos. |
 
 ### GET /users (Listar — protegido)
 
@@ -172,6 +204,20 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 | ✅ Camino feliz | Crear perfil si no existe (upsert) | 200. Perfil creado. |
 | ⚠️ Caso límite | Actualización parcial (solo un campo) | 200. Solo ese campo cambia. |
 | ❌ Modo fallo | Sin token | 401. |
+| ⚠️ Caso límite | Actualizar con **todos los campos vacíos** (`{}`) | PR1 — Upsert con todos None, campos existentes se conservan. |
+| ⚠️ Caso límite | Actualizar con **campos explícitamente null** | PR1-bis — Perfil con todos los campos None. |
+| ⚠️ Caso límite | **Name >500 caracteres** | PR2 — Pydantic no define max_length, se almacena sin problema. |
+
+### DELETE /users/{user_id}
+
+| Tipo | Caso | Qué verifica |
+|------|------|-------------|
+| ✅ Camino feliz | Admin elimina usuario | 200. Usuario + perfil eliminados. |
+| ❌ Modo fallo | Usuario regular intenta eliminar | 403. |
+| ❌ Modo fallo | ID inexistente | 404. |
+| ❌ Modo fallo | Sin token | 401. |
+| ⚠️ Caso límite | **Admin se elimina a sí mismo** | D1 — 200, el servicio lo permite (solo verifica role=admin). |
+| ❌ Modo fallo | **Doble eliminación** del mismo ID | D2 — 404 en el segundo intento. |
 
 ---
 
@@ -179,19 +225,22 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 
 | Endpoint | Happy | Edge | Failure | Total |
 |----------|-------|------|---------|-------|
-| POST /auth/login | 1 | 2 | 3 | 6 |
-| POST /auth/forgot-password | 1 | 1 | 2 | 4 |
-| POST /auth/reset-password | 1 | 2 | 3 | 6 |
-| POST /auth/change-password | 1 | 1 | 2 | 4 |
-| GET /auth/me | 2 | 1 | 4 | 7 |
-| POST /users (register) | 2 | 2 | 4 | 8 |
+| POST /auth/login | 1 | 4 | 6 | 11 |
+| POST /auth/forgot-password | 1 | 1 | 4 | 6 |
+| POST /auth/reset-password | 1 | 3 | 4 | 8 |
+| POST /auth/change-password | 1 | 1 | 3 | 5 |
+| GET /auth/me | 2 | 1 | 6 | 9 |
+| POST /users (register) | 2 | 4 | 6 | 12 |
 | GET /users | 2 | 1 | 1 | 4 |
 | GET /users/{id} | 2 | 1 | 2 | 5 |
 | PUT /users/{id} | 2 | 2 | 2 | 6 |
-| DELETE /users/{id} | 1 | 0 | 3 | 4 |
+| DELETE /users/{id} | 1 | 1 | 4 | 6 |
 | GET /profiles/me | 1 | 0 | 2 | 3 |
-| PUT /profiles/me | 2 | 1 | 1 | 4 |
-| **Total** | **18** | **14** | **29** | **61** |
+| PUT /profiles/me | 2 | 4 | 1 | 7 |
+| Seguridad JWT (S1-S3) | — | 1 | 3 | 4 |
+| **Total** | **18** | **24** | **42** | **84** |
+
+> Los 91 tests cubren 84 casos planificados más 7 variantes adicionales (como contraseña >72 bytes, algoritmo none con firma vacía, SECRET_KEY vacío).
 
 ---
 
