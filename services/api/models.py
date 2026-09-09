@@ -151,3 +151,50 @@ class IncidentSummary(BaseModel):
     by_category: dict[IncidentCategory, int]
     by_origin: dict[IncidentOrigin, int]
     by_branch: dict[IncidentBranch, int]
+
+
+# ── Modelos ORM para inventario (SQLModel / Supabase) ────────────
+
+from sqlmodel import Field as SQLField, SQLModel  # noqa: E402, F811
+from datetime import datetime, timezone  # noqa: E402
+
+
+class Asset(SQLModel, table=True):
+    """Equivale a Product del README. Activo de hardware, periférico, material de oficina o formación."""
+    __tablename__ = "asset"
+    __table_args__ = {"extend_existing": True}
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    name: str
+    sku: str = SQLField(unique=True)
+    category: str  # "hardware" | "peripherals" | "office_supplies" | "training_materials"
+    office: str  # "Valencia" | "Miami"
+
+
+class AssetEntry(SQLModel, table=True):
+    """Equivale a InboundOrder. Compra o entrega de proveedor recibida por Nexova."""
+    __tablename__ = "assetentry"
+    __table_args__ = {"extend_existing": True}
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    asset_id: int = SQLField(foreign_key="asset.id")
+    quantity: int
+    supplier: str
+    office: str  # "Valencia" | "Miami" — oficina receptora
+    created_at: datetime = SQLField(default_factory=lambda: datetime.now(timezone.utc))
+    user_uuid: str  # UUID del usuario de TinyDB que registró la entrada
+
+
+class AssetExit(SQLModel, table=True):
+    """Equivale a OutboundOrder. Asignación de activo a empleado o evento de consumo."""
+    __tablename__ = "assetexit"
+    __table_args__ = {"extend_existing": True}
+
+    id: int | None = SQLField(default=None, primary_key=True)
+    asset_id: int = SQLField(foreign_key="asset.id")
+    quantity: int
+    exit_type: str  # "allocation" | "consumption"
+    assigned_to: str | None = None
+    office: str  # "Valencia" | "Miami"
+    created_at: datetime = SQLField(default_factory=lambda: datetime.now(timezone.utc))
+    user_uuid: str  # UUID del usuario de TinyDB que registró la salida
