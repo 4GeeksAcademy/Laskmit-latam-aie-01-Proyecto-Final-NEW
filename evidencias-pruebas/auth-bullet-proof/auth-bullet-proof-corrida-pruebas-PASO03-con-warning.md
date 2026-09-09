@@ -1,0 +1,129 @@
+# CORRIDA AUTOMÁTICA DE LOS TEST CORRESPONDIENTES a PASO 03 -(Mejoras)
+
+## COMANDO:
+
+@Laskmit ➜ /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/services/api (auth-bullet-proof) $ PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/ -v
+
+## RESULTADO EN EL TERMINAL:  (CONTIENE WARNINGS QUE HAY QUE ELIMINAR)
+
+================================== test session starts ==================================
+platform linux -- Python 3.12.1, pytest-9.1.1, pluggy-1.6.0 -- /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/services/api/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/services/api
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.14.2
+collected 91 items                                                                      
+
+tests/test_analyze_cli.py::AnalyzeCliErrorHandlingTest::test_export_failure_returns_one_without_exposing_exception PASSED [  1%]
+tests/test_auth_me.py::TestAuthMe::test_happy_path_with_profile PASSED            [  2%]
+tests/test_auth_me.py::TestAuthMe::test_happy_path_without_profile PASSED         [  3%]
+tests/test_auth_me.py::TestAuthMe::test_edge_case_admin_user PASSED               [  4%]
+tests/test_auth_me.py::TestAuthMe::test_failure_no_token PASSED                   [  5%]
+tests/test_auth_me.py::TestAuthMe::test_failure_expired_token PASSED              [  6%]
+tests/test_auth_me.py::TestAuthMe::test_failure_malformed_token PASSED            [  7%]
+tests/test_auth_me.py::TestAuthMe::test_failure_inactive_user PASSED              [  8%]
+tests/test_auth_me_advanced.py::TestAuthMeAdvanced::test_failure_header_without_bearer_prefix PASSED [  9%]
+tests/test_auth_me_advanced.py::TestAuthMeAdvanced::test_failure_empty_token_in_header PASSED [ 10%]
+tests/test_auth_password.py::AuthPasswordEndpointsTest::test_change_password_requires_current_password_and_keeps_session PASSED [ 12%]
+tests/test_auth_password.py::AuthPasswordEndpointsTest::test_email_configuration_failure_keeps_generic_response_and_invalidates_token PASSED [ 13%]
+tests/test_auth_password.py::AuthPasswordEndpointsTest::test_email_failure_keeps_generic_response_and_invalidates_token PASSED [ 14%]
+tests/test_auth_password.py::AuthPasswordEndpointsTest::test_expired_token_is_rejected PASSED [ 15%]
+tests/test_auth_password.py::AuthPasswordEndpointsTest::test_forgot_password_does_not_enumerate_users PASSED [ 16%]
+tests/test_auth_password.py::AuthPasswordEndpointsTest::test_reset_password_is_single_use_and_updates_login PASSED [ 17%]
+tests/test_auth_password_advanced.py::TestAuthPasswordAdvanced::test_failure_inactive_user_forgot_password PASSED [ 18%]
+tests/test_auth_password_advanced.py::TestAuthPasswordAdvanced::test_failure_inactive_user_reset_password PASSED [ 19%]
+tests/test_auth_password_advanced.py::TestAuthPasswordAdvanced::test_failure_expired_token_timezone_edge PASSED [ 20%]
+tests/test_auth_password_advanced.py::TestAuthPasswordAdvanced::test_limit_reset_to_same_password PASSED [ 21%]
+tests/test_auth_password_advanced.py::TestAuthPasswordAdvanced::test_failure_change_password_for_inexistent_user PASSED [ 23%]
+tests/test_auth_password_advanced.py::TestAuthPasswordAdvanced::test_failure_multiple_forgot_password_invalidates_previous PASSED [ 24%]
+tests/test_incident_manager.py::IncidentManagerTest::test_analyze_hides_unexpected_error_details PASSED [ 25%]
+tests/test_incident_manager.py::IncidentManagerTest::test_analyze_returns_clean_error_for_invalid_csv PASSED [ 26%]
+tests/test_incident_manager.py::IncidentManagerTest::test_create_list_filter_and_summary PASSED [ 27%]
+tests/test_incident_manager.py::IncidentManagerTest::test_empty_missing_and_invalid_filter PASSED [ 28%]
+tests/test_incident_manager.py::IncidentManagerTest::test_historical_seed_is_idempotent PASSED [ 29%]
+tests/test_incident_manager.py::IncidentManagerTest::test_manager_endpoints_require_authentication PASSED [ 30%]
+tests/test_incident_manager.py::IncidentManagerTest::test_validation_and_lifecycle PASSED [ 31%]
+tests/test_login.py::TestLogin::test_happy_path_returns_jwt_token PASSED          [ 32%]
+tests/test_login.py::TestLogin::test_edge_case_email_with_unexpected_case PASSED  [ 34%]
+tests/test_login.py::TestLogin::test_edge_case_password_empty_string PASSED       [ 35%]
+tests/test_login.py::TestLogin::test_failure_wrong_password PASSED                [ 36%]
+tests/test_login.py::TestLogin::test_failure_unregistered_email PASSED            [ 37%]
+tests/test_login.py::TestLogin::test_failure_inactive_user PASSED                 [ 38%]
+tests/test_login.py::TestLogin::test_failure_message_does_not_enumerate_users PASSED [ 39%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_limit_long_password PASSED  [ 40%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_limit_password_beyond_bcrypt_limit PASSED [ 41%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_limit_password_with_unicode PASSED [ 42%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_failure_wrong_secret_key PASSED [ 43%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_failure_token_with_non_numeric_sub PASSED [ 45%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_failure_token_with_sub_zero PASSED [ 46%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_failure_token_with_negative_sub PASSED [ 47%]
+tests/test_login_advanced.py::TestLoginAdvanced::test_failure_orphan_token_deleted_user PASSED [ 48%]
+tests/test_profiles.py::TestGetProfile::test_happy_path_user_with_profile PASSED  [ 49%]
+tests/test_profiles.py::TestGetProfile::test_failure_no_profile PASSED            [ 50%]
+tests/test_profiles.py::TestGetProfile::test_failure_no_token PASSED              [ 51%]
+tests/test_profiles.py::TestUpdateProfile::test_happy_path_create_profile PASSED  [ 52%]
+tests/test_profiles.py::TestUpdateProfile::test_happy_path_update_existing_profile PASSED [ 53%]
+tests/test_profiles.py::TestUpdateProfile::test_edge_case_partial_update PASSED   [ 54%]
+tests/test_profiles.py::TestUpdateProfile::test_failure_no_token PASSED           [ 56%]
+tests/test_profiles_advanced.py::TestProfileAdvanced::test_limit_update_profile_all_empty_fields PASSED [ 57%]
+tests/test_profiles_advanced.py::TestProfileAdvanced::test_limit_update_profile_with_null_fields PASSED [ 58%]
+tests/test_profiles_advanced.py::TestProfileAdvanced::test_limit_very_long_name_in_profile PASSED [ 59%]
+tests/test_register.py::TestRegister::test_happy_path_creates_user_with_role_user PASSED [ 60%]
+tests/test_register.py::TestRegister::test_happy_path_with_optional_profile PASSED [ 61%]
+tests/test_register.py::TestRegister::test_edge_case_duplicate_email PASSED       [ 62%]
+tests/test_register.py::TestRegister::test_edge_case_password_exactly_8_chars PASSED [ 63%]
+tests/test_register.py::TestRegister::test_failure_password_too_short PASSED      [ 64%]
+tests/test_register.py::TestRegister::test_failure_invalid_email_format PASSED    [ 65%]
+tests/test_register.py::TestRegister::test_failure_role_not_exposed_in_request PASSED [ 67%]
+tests/test_register_advanced.py::TestRegisterAdvanced::test_limit_international_email PASSED [ 68%]
+tests/test_register_advanced.py::TestRegisterAdvanced::test_limit_email_with_plus_subaddressing PASSED [ 69%]
+tests/test_register_advanced.py::TestRegisterAdvanced::test_failure_password_only_spaces PASSED [ 70%]
+tests/test_register_advanced.py::TestRegisterAdvanced::test_failure_empty_profile_fields_present PASSED [ 71%]
+tests/test_security_jwt.py::TestSecurityJWT::test_failure_jwt_algorithm_none PASSED [ 72%]
+tests/test_security_jwt.py::TestSecurityJWT::test_failure_jwt_algorithm_none_empty_signature PASSED [ 73%]
+tests/test_security_jwt.py::TestSecurityJWT::test_failure_tampered_payload PASSED [ 74%]
+tests/test_security_jwt.py::TestSecurityJWT::test_limit_empty_secret_key PASSED   [ 75%]
+tests/test_seed_cli.py::SeedCliErrorHandlingTest::test_database_failure_returns_sanitized_error PASSED [ 76%]
+tests/test_seed_cli.py::SeedCliErrorHandlingTest::test_missing_credentials_returns_one_without_traceback PASSED [ 78%]
+tests/test_users.py::TestListUsers::test_happy_path_admin_can_list PASSED         [ 79%]
+tests/test_users.py::TestListUsers::test_happy_path_regular_user_can_list PASSED  [ 80%]
+tests/test_users.py::TestListUsers::test_failure_no_token PASSED                  [ 81%]
+tests/test_users.py::TestGetUser::test_happy_path_own_user PASSED                 [ 82%]
+tests/test_users.py::TestGetUser::test_happy_path_admin_gets_other_user PASSED    [ 83%]
+tests/test_users.py::TestGetUser::test_edge_case_regular_user_gets_other_user PASSED [ 84%]
+tests/test_users.py::TestGetUser::test_failure_nonexistent_user PASSED            [ 85%]
+tests/test_users.py::TestGetUser::test_failure_no_token PASSED                    [ 86%]
+tests/test_users.py::TestUpdateUser::test_happy_path_update_own_email PASSED      [ 87%]
+tests/test_users.py::TestUpdateUser::test_happy_path_admin_changes_role PASSED    [ 89%]
+tests/test_users.py::TestUpdateUser::test_edge_case_regular_user_cannot_change_role PASSED [ 90%]
+tests/test_users.py::TestUpdateUser::test_edge_case_regular_user_updates_other PASSED [ 91%]
+tests/test_users.py::TestUpdateUser::test_failure_nonexistent_user PASSED         [ 92%]
+tests/test_users.py::TestUpdateUser::test_failure_no_token PASSED                 [ 93%]
+tests/test_users.py::TestDeleteUser::test_happy_path_admin_deletes_user PASSED    [ 94%]
+tests/test_users.py::TestDeleteUser::test_failure_regular_user_cannot_delete PASSED [ 95%]
+tests/test_users.py::TestDeleteUser::test_failure_nonexistent_user PASSED         [ 96%]
+tests/test_users.py::TestDeleteUser::test_failure_no_token PASSED                 [ 97%]
+tests/test_users_advanced.py::TestDeleteUserAdvanced::test_edge_admin_deletes_themselves PASSED [ 98%]
+tests/test_users_advanced.py::TestDeleteUserAdvanced::test_failure_double_delete PASSED [100%]
+
+=================================== warnings summary ====================================
+tests/test_auth_me.py: 5 warnings
+tests/test_auth_me_advanced.py: 1 warning
+tests/test_auth_password.py: 6 warnings
+tests/test_auth_password_advanced.py: 6 warnings
+tests/test_login.py: 5 warnings
+tests/test_login_advanced.py: 6 warnings
+tests/test_profiles.py: 5 warnings
+tests/test_profiles_advanced.py: 3 warnings
+tests/test_register.py: 5 warnings
+tests/test_register_advanced.py: 4 warnings
+tests/test_security_jwt.py: 4 warnings
+tests/test_users.py: 22 warnings
+tests/test_users_advanced.py: 3 warnings
+
+**/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/services/api/auth/services.py:103: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).**
+    created_at=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== 91 passed, 75 warnings in 41.34s ============================
+@Laskmit ➜ /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/services/api (auth-bullet-proof) $ 
