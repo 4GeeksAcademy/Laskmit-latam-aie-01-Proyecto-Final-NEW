@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 import sys
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlmodel import SQLModel
+
+try:
+    from services.api.database import engine as supabase_engine
+except ModuleNotFoundError:
+    from database import engine as supabase_engine  # type: ignore[no-redef]
 
 try:
     from services.api.routes.suppliers import router as suppliers_router
@@ -32,8 +39,20 @@ try:
 except ModuleNotFoundError:
     from routes.profiles import router as profiles_router  # type: ignore[no-redef]
 
+try:
+    from services.api.routers.inventory import router as inventory_router
+except ModuleNotFoundError:
+    from routers.inventory import router as inventory_router  # type: ignore[no-redef]  # type: ignore[no-redef]
 
-app = FastAPI(title="Nexova Operations API", version="1.2.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: crear tablas en Supabase si no existen
+    SQLModel.metadata.create_all(supabase_engine)
+    yield
+
+
+app = FastAPI(title="Nexova Operations API", version="1.3.0", lifespan=lifespan)
 
 
 @app.exception_handler(IncidentValidationError)
@@ -59,3 +78,4 @@ app.include_router(incidents_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)
+app.include_router(inventory_router)

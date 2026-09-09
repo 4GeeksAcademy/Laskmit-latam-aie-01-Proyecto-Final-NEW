@@ -89,7 +89,7 @@ El seeder crea el administrador definido en `.env` y carga los 15 proveedores in
 Cuando el seeder termine, inicia la API en la **misma Terminal 1**:
 
 ```bash
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
 ```
 
 Deja la Terminal 1 ejecutándose mientras utilizas los frontends. El registro mediante `POST /users` siempre crea usuarios con el rol `user`; el seeder crea el administrador inicial.
