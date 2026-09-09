@@ -19,7 +19,9 @@ PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv 
 # Ejecutar por palabra clave
 PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest -k "login" -v -W all
 
-## Resultados de cobertura (PASO 03)
+## Resultados de cobertura (PASO 03 + PASO 04)
+
+### Módulos de autenticación (PASO 03)
 
 | Módulo | Cobertura |
 |--------|-----------|
@@ -31,7 +33,16 @@ PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv 
 | `routes/profiles.py` | 81% |
 | **Total módulos auth** | **93%** |
 
-> 📊 **93% de cobertura** — supera el 70% requerido. **91 pruebas en total** (62 del PASO 02 + 29 del PASO 03).
+### Módulos del backoffice (PASO 04)
+
+| Módulo | Cobertura | Objetivo |
+|--------|-----------|----------|
+| `routes/suppliers.py` | **91%** | ✅ ≥ 60% |
+| `routes/incidents.py` | **76%** | ✅ ≥ 60% |
+
+> 📊 **127 pruebas backend** (62 PASO 02 + 29 PASO 03 + 36 PASO 04).
+> **43 pruebas frontend** (Jest, todas del PASO 04).
+> **170 pruebas totales** en el proyecto.
 ```
 
 ## Estructura de la suite
@@ -52,6 +63,8 @@ services/api/tests/
 ├── test_profiles_advanced.py      # PASO 03 — Profiles avanzado (PR1-PR2)
 ├── test_users_advanced.py         # PASO 03 — Users avanzado (D1-D2)
 ├── test_security_jwt.py           # PASO 03 — Seguridad JWT (S1-S3)
+├── test_suppliers.py              # PASO 04 — Suppliers CRUD completo (25 tests)
+└── test_incidents_advanced.py     # PASO 04 — Incidents avanzado (8 tests)
 ```
 
 ## Cobertura por endpoint
@@ -244,7 +257,56 @@ siguiendo la estructura de tres niveles: **camino feliz**, **caso límite** y **
 
 ---
 
-## Notas sobre la estrategia de pruebas
+## PASO 04 — Actividad Extra (Backoffice + Frontend)
+
+### Cobertura obtenida
+
+| Módulo | Cobertura |
+|--------|-----------|
+| `routes/suppliers.py` | **91%** ✅ |
+| `routes/incidents.py` | **76%** ✅ |
+| Frontend utilidades (Jest, 43 tests) | **100% de funciones clave** ✅ |
+
+> **127 pruebas backend** + **43 pruebas frontend** = **170 pruebas totales**
+
+### Cómo ejecutar
+
+```bash
+# Backend (pytest) — desde services/api/
+cd services/api
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest tests/ -v -W all
+
+# Backend — cobertura de routers backoffice
+PYTHONPATH="/workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW:$PYTHONPATH" uv run pytest --cov=services.api.routes.suppliers --cov=services.api.routes.incidents tests/ --cov-report=term-missing -W all
+
+# Frontend (Jest) — desde uis/backoffice/
+cd uis/backoffice
+npx jest --coverage
+```
+
+### Nuevos archivos de prueba
+
+**Backend:**
+- `services/api/tests/test_suppliers.py` — 25 tests para 6 endpoints de Suppliers
+- `services/api/tests/test_incidents_advanced.py` — 8 tests adicionales para Incidents
+
+**Frontend (Jest):**
+- `uis/backoffice/__tests__/suppliers-utils.test.ts` — `isRenewalSoon` + validación creación
+- `uis/backoffice/__tests__/candidate-form.test.ts` — `validateForm`, `sanitizeOptionalUrl`, `isValidOptionalUrl`, `toPayload`
+- `uis/backoffice/__tests__/incident-utils.test.ts` — validación formulario + `queryFromFilters` + `formatDate`
+- `uis/backoffice/__tests__/formatters.test.ts` — `formatDateTime` + `formatExperienceYears`
+
+### Resumen de casos por módulo (PASO 04)
+
+| Componente | Happy | Edge | Failure | Total |
+|------------|-------|------|---------|-------|
+| Suppliers API (backend) | 8 | 3 | 14 | **25** |
+| Incidents Advanced (backend) | 1 | 3 | 4 | **8** |
+| Frontend — Proveedores | 5 | 4 | 2 | **11** |
+| Frontend — Candidatos | 7 | 5 | 6 | **18** |
+| Frontend — Incidencias | 4 | 3 | 7 | **14** |
+| Frontend — Formatters | 3 | 2 | 2 | **7** |
+| **Total PASO 04** | **28** | **20** | **35** | **83** |
 
 ### No probamos serialización HTTP
 Cada prueba afirma algo sobre la **lógica de negocio**: qué decisiones toma el endpoint, no cómo se serializa la respuesta HTTP. Por ejemplo:

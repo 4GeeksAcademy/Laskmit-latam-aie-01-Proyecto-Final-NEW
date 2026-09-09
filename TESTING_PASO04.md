@@ -248,13 +248,36 @@ export default config;
 
 ---
 
-## 6️⃣ Objetivos de cobertura
+## 📊 Resultados de cobertura obtenidos
 
-| Módulo | Cobertura objetivo |
-|--------|-------------------|
-| `routes/suppliers.py` | ≥ 60% |
-| `routes/incidents.py` | ≥ 60% (adicional sobre existente) |
-| Frontend utilidades (Jest) | ≥ 60% |
+### Backend (pytest) — 127 pruebas totales (36 nuevas del PASO 04)
+
+| Módulo | Cobertura | Estado |
+|--------|-----------|--------|
+| `routes/suppliers.py` | **91%** | ✅ Supera 60% |
+| `routes/incidents.py` | **76%** | ✅ Supera 60% |
+| **Total módulos backoffice** | **82%** | ✅ |
+
+### Frontend (Jest) — 43 pruebas totales (todas nuevas del PASO 04)
+
+| Archivo de pruebas | Tests | Estado |
+|-------------------|-------|--------|
+| `suppliers-utils.test.ts` | 11 | ✅ |
+| `candidate-form.test.ts` | 18 | ✅ |
+| `incident-utils.test.ts` | 14 | ✅ |
+| `formatters.test.ts` | 7 | ✅ |
+| **Total frontend** | **43** | **✅ Todos pasan** |
+
+### Resumen general del proyecto
+
+| Suite | Tests | Estado |
+|-------|-------|--------|
+| Backend (PASO 01-03) | 91 | ✅ |
+| Backend (PASO 04 — Suppliers) | 25 | ✅ |
+| Backend (PASO 04 — Incidents) | 8 | ✅ |
+| Backend (PASO 04 — Incidents advanced) | 3 | ✅ |
+| Frontend (PASO 04 — utilidades) | 43 | ✅ |
+| **Total general** | **170** | **✅**
 
 ---
 
