@@ -1,0 +1,328 @@
+/* Layout compartido para la sección de inventario del backoffice.
+   Sigue las mismas convenciones que suppliers.module.css. */
+
+/* Contenedor principal de cada página de inventario. */
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #173247 0%, #173247 20%, #f2f6fb 20%, #f2f6fb 100%);
+  padding: 2rem 0 3rem;
+}
+
+.content {
+  margin: 0 auto;
+  max-width: 1480px;
+  width: 97%;
+  display: grid;
+  gap: 1rem;
+}
+
+/* Cabecera contextual con título, descripción y breadcrumb. */
+.header {
+  color: #e7f4ff;
+  border: 1px solid rgba(195, 225, 244, 0.32);
+  border-radius: 1rem;
+  background: rgba(17, 51, 77, 0.7);
+  padding: 1.2rem;
+}
+
+.kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #89d4f4;
+}
+
+.header h1 {
+  margin-top: 0.4rem;
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+}
+
+.header p {
+  margin-top: 0.5rem;
+  color: #c2dfef;
+}
+
+/* Enlace de breadcrumb / navegación secundaria. */
+.breadcrumb {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  color: #89d4f4;
+}
+
+.breadcrumb a {
+  color: #89d4f4;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.breadcrumb a:hover {
+  color: #b4e4fa;
+}
+
+/* Tarjeta contenedora de formularios y tablas. */
+.card {
+  border-radius: 1rem;
+  border: 1px solid #d3e4f1;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.card h2 {
+  font-size: 1rem;
+  color: #15354f;
+  margin-bottom: 0.5rem;
+}
+
+/* Formularios estandarizados (misma apariencia que suppliers). */
+.form {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.84rem;
+  color: #486681;
+}
+
+.form input,
+.form select,
+.form textarea {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  background: #ffffff;
+}
+
+.form input:disabled,
+.form select:disabled {
+  background: #f0f5fa;
+  color: #59758f;
+}
+
+/* Botón primario (submit, acción principal). */
+.primaryButton {
+  border: 1px solid #1f4f73;
+  border-radius: 0.65rem;
+  background: #1f4f73;
+  color: #ffffff;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #14354d;
+}
+
+.primaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Botón secundario (enlace, acción alternativa). */
+.secondaryButton {
+  border: 1px solid #c6d9e8;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #1f4f73;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.secondaryButton:hover {
+  background: #edf3f7;
+}
+
+/* Mensajería de feedback. */
+.error,
+.success,
+.warning {
+  margin-top: 0.75rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.88rem;
+}
+
+.error {
+  background: #ffe6e6;
+  border: 1px solid #ffb8b8;
+  color: #7a1f1f;
+}
+
+.success {
+  background: #e7f6ea;
+  border: 1px solid #bde8c6;
+  color: #17562b;
+}
+
+.warning {
+  background: #fff6e0;
+  border: 1px solid #ffdd99;
+  color: #7a5a00;
+}
+
+.loading {
+  margin-top: 0.75rem;
+  background: #edf3f7;
+  border: 1px solid #d6e3ec;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  color: #41617b;
+  font-size: 0.88rem;
+}
+
+/* Tabla responsive con scroll horizontal. */
+.tableWrap {
+  margin-top: 0.5rem;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  border-bottom: 1px solid #e3edf5;
+  padding: 0.65rem 0.45rem;
+  vertical-align: middle;
+  font-size: 0.88rem;
+}
+
+.table th {
+  color: #4b6b86;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: #f7faff;
+}
+
+/* Acciones por fila (botones compactos). */
+.rowActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* Indicadores visuales de stock. */
+
+.stockCell {
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/*
+ * Umbrales de stock:
+ *   0       → agotado  (rojo)
+ *   1 – 5   → bajo     (ámbar)
+ *   > 5     → saludable (verde)
+ */
+.stockEmpty {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.stockLow {
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.stockHealthy {
+  color: #166534;
+  background: #f0fdf4;
+}
+
+/* Badge para tipo de orden (entrada / salida). */
+.badge {
+  display: inline-block;
+  border-radius: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeInbound {
+  background: #e7f6ea;
+  color: #17562b;
+  border: 1px solid #bde8c6;
+}
+
+.badgeOutbound {
+  background: #e8f0fe;
+  color: #1e4a6b;
+  border: 1px solid #b8d4e8;
+}
+
+/* Metadatos secundarios (fechas, IDs). */
+.meta {
+  color: #59758f;
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}
+
+/* Fila de navegación entre páginas de inventario. */
+.navRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Stock disponible en formulario de salida (lectura). */
+.stockDisplay {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1f4f73;
+  padding: 0.3rem 0;
+}
+
+/* Fila inline para campos cortos (cantidad, selector). */
+.inlineRow {
+  display: flex;
+  gap: 0.62rem;
+  flex-wrap: wrap;
+}
+
+.inlineRow label {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* Contenedor de acciones entre formularios (crear otra orden). */
+.afterSubmitActions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* Responsive: en pantallas estrechas la tabla pasa a scroll. */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineRow {
+    flex-direction: column;
+  }
+}
