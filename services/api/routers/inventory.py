@@ -144,6 +144,17 @@ def create_inbound_order(
             detail=f"Activo con id {payload.asset_id} no encontrado.",
         )
 
+    # Validar que la oficina de la orden coincida con la oficina del activo
+    if payload.office != asset.office:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"El producto '{asset.name}' ({asset.sku}) no está disponible en "
+                f"la oficina '{payload.office}'. Pertenece a '{asset.office}'. "
+                f"Selecciona un producto que exista en esa oficina."
+            ),
+        )
+
     entry = AssetEntry(
         asset_id=payload.asset_id,
         quantity=payload.quantity,
@@ -178,6 +189,17 @@ def create_outbound_order(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Activo con id {payload.asset_id} no encontrado.",
+        )
+
+    # Validar que la oficina de la orden coincida con la oficina del activo
+    if payload.office != asset.office:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"El producto '{asset.name}' ({asset.sku}) no está disponible en "
+                f"la oficina '{payload.office}'. Pertenece a '{asset.office}'. "
+                f"Selecciona un producto que exista en esa oficina."
+            ),
         )
 
     # Validar stock suficiente
