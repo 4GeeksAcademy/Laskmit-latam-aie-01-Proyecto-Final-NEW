@@ -48,10 +48,19 @@ export function InboundOrderClient() {
     loadCatalogue();
   }, [loadCatalogue]);
 
+  // Sincronizar la oficina automáticamente cuando se selecciona un activo
+  useEffect(() => {
+    if (assetId) {
+      const product = products.find((p) => p.id === Number(assetId));
+      if (product) {
+        setOffice(product.office);
+      }
+    }
+  }, [assetId, products]);
+
   function resetForm() {
     setQuantity("");
     setSupplier("");
-    setOffice("Valencia");
     setSubmitSuccess("");
     setSubmitError("");
     // Mantener el producto seleccionado para facilitar órdenes consecutivas
@@ -157,18 +166,23 @@ export function InboundOrderClient() {
             />
           </label>
 
-          {/* Oficina */}
+          {/* Oficina — se sincroniza automáticamente con el activo seleccionado */}
           <label>
             Oficina *
             <select
               value={office}
               onChange={(e) => setOffice(e.target.value)}
               required
-              disabled={submitting}
+              disabled={submitting || Boolean(assetId)}
             >
               <option value="Valencia">Valencia</option>
               <option value="Miami">Miami</option>
             </select>
+            {assetId && (
+              <small className={styles.hint}>
+                Oficina determinada por el activo seleccionado. Selecciona otro activo para cambiar la oficina.
+              </small>
+            )}
           </label>
 
           <button className={styles.primaryButton} type="submit" disabled={submitting}>

@@ -118,7 +118,7 @@ En **Terminal A**, ejecuta:
 cd services/api
 python -m uvicorn main:app --reload --port 8000
 ```
-
+SI ES EN CODESPACES ....
 En Codespaces añade `--host 0.0.0.0` al final y haz público el puerto 8000 (pestaña Puertos → click derecho → Port Visibility → Public).
 
 **Deja esta Terminal A corriendo.** Mientras esté activa, la API responde en:
