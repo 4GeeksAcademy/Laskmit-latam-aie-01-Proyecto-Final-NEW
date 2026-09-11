@@ -69,6 +69,12 @@ async function parseError(
       detail?: unknown;
       error?: { field?: unknown; message?: unknown };
     };
+
+    // Si el backend devolvió un mensaje de error como string, usarlo directamente
+    if (typeof payload.detail === "string") {
+      return new ApiError(payload.detail, response.status, []);
+    }
+
     if (payload.error && typeof payload.error.message === "string") {
       const field = typeof payload.error.field === "string" ? payload.error.field : null;
       return new ApiError(fallback, response.status, [], field);
