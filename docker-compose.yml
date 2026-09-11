@@ -1,0 +1,47 @@
+# Docker Compose para el entorno de desarrollo del monorepo Nexova
+# Uso: docker compose up
+# Requiere un archivo .env en la raíz con las variables de entorno
+
+services:
+  frontends:
+    build:
+      context: ./uis
+    container_name: nexova-frontends
+    ports:
+      - "3000:3000"   # website
+      - "3001:3001"   # backoffice
+    env_file: .env
+    volumes:
+      # Bind mount del código fuente (recarga en caliente)
+      - ./uis:/app
+      # Bind mount del directorio src/ de la raíz (para imports externos tipo ../../../src/...)
+      - ./src:/src
+      # Bind mount del directorio services/ (para imports tipo ../../../../services/api/...)
+      - ./services:/services
+      # Volúmenes anónimos para preservar node_modules instalados en el build
+      - /app/website/node_modules
+      - /app/backoffice/node_modules
+    command: sh /app/start.sh
+    depends_on:
+      - backend
+    networks:
+      - nexova-network
+
+  backend:
+    build:
+      context: ./services
+    container_name: nexova-backend
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      # Montar la raíz del repositorio para preservar la estructura de rutas esperada (services/api/routes/)
+      - .:/repo
+    working_dir: /repo/services/api
+    command: sh /repo/services/api/start.sh
+    networks:
+      - nexova-network
+
+networks:
+  nexova-network:
+    driver: bridge
