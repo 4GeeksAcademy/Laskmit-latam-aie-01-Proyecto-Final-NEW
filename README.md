@@ -18,163 +18,241 @@ _Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Ac
 | Carpeta | Contenido |
 |---------|-----------|
 | `uis/backoffice/` | Aplicación Next.js principal — Backoffice interno de Nexova |
-| `uis/backoffice/app/` | Rutas y páginas del backoffice |
 | `uis/backoffice/app/suppliers/` | Directorio de proveedores |
 | `uis/backoffice/app/talent-pipeline-tracker/` | Pipeline de candidaturas (People & Talent) |
 | `uis/backoffice/app/incidents-analyzer/` | Analizador de incidencias de soporte |
+| `uis/backoffice/app/incidents/` | Gestor centralizado de incidencias |
+| `uis/backoffice/app/backoffice/inventory/` | **Gestión de inventario** (productos, órdenes entrada/salida) |
 | `uis/website/` | Sitio web público de Nexova |
-| `services/api/` | API backend (FastAPI) con autenticación JWT |
+| `services/api/` | API backend (FastAPI) con autenticación JWT + doble base de datos |
 | `services/api/auth/` | Módulo de autenticación: modelos, servicios y dependencias |
 | `services/api/clients/` | Clientes API reutilizados por los frontends |
-| `scripts/` | Utilidades y análisis de datos |
+| `services/api/routers/inventory.py` | **API de inventario** (activos, entradas, salidas sobre Supabase) |
+| `scripts/` | Utilidades, seed de incidencias y análisis de datos |
 | `data/` | Datos de entrada, resultados y pipelines ETL |
+| `shared/` | Lógica compartida Python (ej. análisis de incidencias) |
 | `infra/` | Configuración de infraestructura |
 | `packages/shared/` | Tipos y utilidades compartidas |
-| `SPECS/` | Tareas a realizar |
-| `SPECS/obsoletos` | Documentación de tareas obsoletas. No leer |
+| `SPECS/` | Especificaciones técnicas de cada hito |
+| `SPECS/obsoletos/` | Documentación de tareas obsoletas. No leer |
 | `docs/` | Arquitectura y propuestas técnicas |
 | `memory-bank/` | Contexto de negocio, técnico y progreso |
 | `agents/` | Reglas y skills reutilizables |
-| `AGENTS.md` | Protocolo operativo para desarrollo con IA |
+| `evidencias-pruebas/` | Reportes de pruebas funcionales de cada hito |
 
 ---
 
-## Desarrollo
+## Requisitos previos
 
-### Requisitos previos
+| Herramienta | Versión mínima | Para qué |
+|-------------|---------------|----------|
+| **Python** | 3.11+ | Backend FastAPI |
+| **pip** | — | Gestor de paquetes Python |
+| **Node.js** | 20+ | Frontends Next.js |
+| **npm** | — | Gestor de paquetes JavaScript |
 
-- **Python 3.11+** y [uv](https://docs.astral.sh/uv/) (gestor de paquetes Python)
-- **Node.js 20+** y npm
+---
 
-### Preparación inicial (solo la primera vez)
+---
 
-Ejecuta estos comandos desde la raíz del repositorio:
+## 🪟 Cómo usar los terminales
+
+Necesitas **tres terminales separadas**, una para cada servicio. No pueden compartir la misma terminal porque cada servicio se queda ejecutándose permanentemente.
+
+| Terminal | Servicio | Puerto | Se queda ejecutándose |
+|----------|----------|--------|-----------------------|
+| **Terminal A** | API (FastAPI) | `8000` | ✅ Sí, siempre |
+| **Terminal B** | Backoffice (Next.js) | `3000` | ✅ Sí, siempre |
+| **Terminal C** | Sitio web público (Next.js) | `3001` | ✅ Sí, siempre |
+
+> ⚠️ **Importante:** cada servicio debe correr en su propia terminal. No los arranques en la misma terminal porque el primero se bloquearía al ejecutar el segundo.
+
+Para crear una terminal nueva en VS Code: **Terminal → New Terminal** (o `Ctrl+Shift+Ñ`).
+
+---
+
+## 🟢 Terminal A — Backend API (FastAPI)
+
+Este es el **primer servicio que debe arrancar**. Sin él, los frontends no tienen datos que mostrar.
+
+Base de datos dual: **TinyDB** para autenticación, usuarios, proveedores e incidencias. **Supabase (PostgreSQL vía SQLModel)** para inventario (activos, entradas, salidas).
+
+### ▶️ Primera vez (solo al clonar el repositorio)
+
+En **Terminal A**, ejecuta:
 
 ```bash
-# Dependencias de la API      (ojo esto siempre hay que correrlo)
 cd services/api
 pip install -r requirements.txt
-
-# Dependencias del backoffice
-cd ../../uis/backoffice
-npm install
-
-# Dependencias del sitio público
-cd ../website
-npm install
 ```
 
-Crea `services/api/.env` con las variables de autenticación:
+Luego crea el archivo `services/api/.env` con este contenido (nunca lo subas al repositorio):
 
 ```env
 SECRET_KEY=<clave_hex_64_caracteres>
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 USUARIO_ADMINISTRADOR=usuarioadministrador
 CLAVE_ADMINISTRADOR=<contraseña_segura>
+DATABASE_URL=postgresql://postgres.xxxxx:password@pooler.supabase.com:6543/postgres
 ```
 
-Genera una `SECRET_KEY` con `openssl rand -hex 32`. No publiques ni subas este archivo al repositorio.
+- `SECRET_KEY`: genérala con `openssl rand -hex 32`
+- `DATABASE_URL`: solo si vas a usar inventario; el resto funciona sin ella
+- `USUARIO_ADMINISTRADOR` / `CLAVE_ADMINISTRADOR`: credenciales del admin inicial
 
-### Terminal 1 — Backend API (FastAPI)
+> ⚠️ Si la contraseña de Supabase tiene `@`, `#` u otros caracteres especiales, haz URL-encode (ej. `@` → `%40`)
 
-Abre la **Terminal 1**. Primero, ejecuta el seeder en esta terminal:
+Después, ejecuta los **seeders** también en Terminal A (solo la primera vez):
 
 ```bash
 cd services/api
-python seed.py
+python seed.py              # Crea admin + 15 proveedores
+python seed_inventory.py    # 6 activos + 4 entradas + 3 salidas (solo si DATABASE_URL está configurada)
 ```
 
-El seeder crea el administrador definido en `.env` y carga los 15 proveedores iniciales. El comando termina por sí solo; ejecútalo después de clonar el repositorio o de borrar la base de datos.
+### ▶️ Cada vez que quieras usar la API
 
-Cuando el seeder termine, inicia la API en la **misma Terminal 1**:
+En **Terminal A**, ejecuta:
 
 ```bash
-
+cd services/api
+python -m uvicorn main:app --reload --port 8000
 ```
 
-Deja la Terminal 1 ejecutándose mientras utilizas los frontends. El registro mediante `POST /users` siempre crea usuarios con el rol `user`; el seeder crea el administrador inicial.
+En Codespaces añade `--host 0.0.0.0` al final y haz público el puerto 8000 (pestaña Puertos → click derecho → Port Visibility → Public).
 
-El backend expone autenticación JWT, proveedores y análisis de incidencias. Todas las rutas están protegidas excepto `POST /auth/login`, `POST /users` y `GET /api/incidents/health`.
+**Deja esta Terminal A corriendo.** Mientras esté activa, la API responde en:
 
-#### URL de la API en GitHub Codespaces
+- Local: `http://localhost:8000`
+- Codespaces: `https://<nombre-del-codespace>-8000.app.github.dev`
 
-No configures el frontend con `http://localhost:8000` cuando lo abras desde el navegador mediante Codespaces. En ese caso, `localhost` puede apuntar a tu computadora y no al contenedor.
+Documentación interactiva: entra a `/docs` (Swagger) o `/redoc` (ReDoc).
 
-1. Con la API en ejecución, abre la pestaña **Puertos** de VS Code.
-2. Busca el puerto `8000` y cambia **Visibilidad del puerto** a **Público**. Esto evita que las peticiones del navegador reciban la pantalla de autenticación de GitHub en lugar de la respuesta JSON de FastAPI.
-3. En la misma fila, copia la **Dirección reenviada**. Tendrá una forma similar a `https://<nombre-del-codespace>-8000.app.github.dev`.
-4. Comprueba la API abriendo `<URL_API>/api/incidents/health` o Swagger en `<URL_API>/docs`.
+### Endpoints disponibles
 
-La dirección cambia si recreas el Codespace. Cópiala siempre desde la pestaña **Puertos**; no reutilices una URL antigua.
+| Grupo | Ejemplos de rutas | Auth |
+|-------|-------------------|------|
+| Autenticación | `POST /auth/login`, `GET /auth/me` | Login: público |
+| Usuarios | `POST /users`, `GET/PUT /profiles/me` | Registro: público |
+| Proveedores | `GET/POST /suppliers`, `PUT/DELETE /suppliers/{id}` | Protegido |
+| Incidencias (analizador) | `POST /api/incidents/analyze`, `GET /api/incidents/health` | Analyze: protegido |
+| Incidencias (gestor) | `GET/POST /api/incidents`, `PATCH /api/incidents/{id}` | Protegido |
+| **Inventario** | `GET /inventory/products`, `POST /inventory/orders/inbound`, etc. | Lectura: público / Escritura: protegido |
 
-Para ejecución local fuera de Codespaces, la URL base sí es `http://localhost:8000`.
-
-**Flujo de autenticación:**
+### Flujo de autenticación
 
 | Paso | Acción | Endpoint | Auth |
 |------|--------|----------|------|
 | 1 | Crear cuenta | `POST /users` | ❌ Público |
 | 2 | Iniciar sesión | `POST /auth/login` | ❌ Público |
-| 3 | Usar API protegida | `GET /suppliers`, etc. | ✅ Bearer Token |
+| 3 | Usar API protegida | Cualquier endpoint protegido | ✅ Bearer Token |
 
-Documentación interactiva:
+---
 
-- Codespaces: `<URL_API>/docs` (Swagger) y `<URL_API>/redoc` (ReDoc).
-- Entorno local: `http://localhost:8000/docs` y `http://localhost:8000/redoc`.
+## 🟢 Terminal B — Frontend Backoffice (Next.js)
 
-### Terminal 2 — Frontend Backoffice (Next.js)
+Abre una **nueva terminal** (`Ctrl+Shift+Ñ` o Terminal → New Terminal). Esta es la **Terminal B**. No uses la Terminal A porque ahí sigue corriendo la API.
 
-Aplicación principal de administración interna de Nexova.
+### ▶️ Primera vez (solo al clonar el repositorio)
 
-Crea `uis/backoffice/.env.local` antes de iniciar Next.js. En `NEXT_PUBLIC_API_BASE_URL`, pega la dirección reenviada del puerto `8000` copiada en el paso anterior, **sin** `/docs` y **sin** una barra `/` al final:
+En **Terminal B**, ejecuta:
 
-```env
-# API del Talent Pipeline Tracker (playground 4Geeks)
-NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
-
-# Codespaces: URL pública reenviada del puerto 8000
-NEXT_PUBLIC_API_BASE_URL=https://<nombre-del-codespace>-8000.app.github.dev
+```bash
+cd uis/backoffice
+npm install
 ```
 
-Si trabajas fuera de Codespaces, usa `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`.
+Luego crea `uis/backoffice/.env.local`. La variable `NEXT_PUBLIC_API_BASE_URL` debe apuntar a la API (la URL que copiaste de la pestaña Puertos):
 
-Abre una **Terminal 2** para iniciar el backoffice y déjala ejecutándose:
+```env
+# API del Talent Pipeline Tracker (playground 4Geeks — externo)
+NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
+
+# API Nexova (FastAPI) — cambiar según entorno
+# Codespaces:
+NEXT_PUBLIC_API_BASE_URL=https://<nombre-del-codespace>-8000.app.github.dev
+# Local:
+# NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+> ❌ No crees `NEXT_PUBLIC_INVENTORY_API_URL`. Todo usa `NEXT_PUBLIC_API_BASE_URL`. El prefijo `/inventory` distingue el recurso.
+
+### ▶️ Cada vez que quieras usar el backoffice
+
+En **Terminal B**, ejecuta:
 
 ```bash
 cd uis/backoffice
 npm run dev -- --port 3000
 ```
 
-Desde **Puertos**, abre la dirección reenviada del puerto `3000`. Si modificas `.env.local`, detén Next.js con `Ctrl+C` y vuelve a ejecutar el comando para que tome el nuevo valor.
+**Deja esta Terminal B corriendo.** Abre el puerto 3000 desde la pestaña Puertos.
 
-Cada módulo usa estas variables:
+### Rutas del backoffice
 
-| Módulo | Variable | API |
-|--------|----------|-----|
-| Talent Pipeline Tracker | `NEXT_PUBLIC_API_URL` | playground.4geeks.com |
-| Autenticación y perfil | `NEXT_PUBLIC_API_BASE_URL` | FastAPI, puerto `8000` |
-| Suppliers | `NEXT_PUBLIC_API_BASE_URL` | FastAPI, puerto `8000` |
-| Incidencias | `NEXT_PUBLIC_API_BASE_URL` | FastAPI, puerto `8000` |
+| Ruta | Módulo | Descripción |
+|------|--------|-------------|
+| `/login` | Auth | Inicio de sesión |
+| `/register` | Auth | Registro de cuenta |
+| `/account/profile` | Perfil | Consulta y edición de perfil |
+| `/` | Dashboard | Página principal |
+| `/suppliers` | Proveedores | Directorio y operaciones |
+| `/talent-pipeline-tracker` | Talent Pipeline | Candidatos y procesos |
+| `/incidents-analyzer` | Incidencias | Analizador CSV |
+| `/incidents` | Incidencias | Gestor centralizado |
+| **`/backoffice/inventory/products`** | **Inventario** | **Lista de activos con stock** |
+| **`/backoffice/inventory/orders/inbound`** | **Inventario** | **Registrar orden de entrada** |
+| **`/backoffice/inventory/orders/outbound`** | **Inventario** | **Registrar orden de salida** |
+| **`/backoffice/inventory/orders`** | **Inventario** | **Historial de órdenes** |
 
-### Terminal 3 — Sitio Web Público (Next.js)
+Todas requieren iniciar sesión excepto `/login` y `/register`.
 
-Sin detener la API ni el backoffice, abre una **Terminal 3** y déjala ejecutándose:
+---
+
+## 🟢 Terminal C — Sitio Web Público (Next.js)
+
+Abre una **tercera terminal** (`Ctrl+Shift+Ñ`). Esta es la **Terminal C**. La API (Terminal A) y el backoffice (Terminal B) deben seguir corriendo.
+
+### ▶️ Primera vez (solo al clonar el repositorio)
+
+En **Terminal C**, ejecuta:
+
+```bash
+cd uis/website
+npm install
+```
+
+### ▶️ Cada vez que quieras usarlo
+
+En **Terminal C**, ejecuta:
 
 ```bash
 cd uis/website
 npm run dev -- --port 3001
 ```
 
-Desde **Puertos**, abre la dirección reenviada del puerto `3001`.
+**Deja esta Terminal C corriendo.** Abre el puerto 3001 desde la pestaña Puertos.
 
-### Resumen: proyecto completo en ejecución
+---
 
-| Terminal | Servicio | Puerto | Debe permanecer ejecutándose |
-|----------|----------|--------|------------------------------|
-| Terminal 1 | API FastAPI | `8000` | Sí |
-| Terminal 2 | Backoffice Next.js | `3000` | Sí |
-| Terminal 3 | Website Next.js | `3001` | Sí |
+## Seeders (datos iniciales)
 
-En Codespaces, accede a cada servicio mediante su **Dirección reenviada** en la pestaña **Puertos**. Para que el backoffice consuma FastAPI, el puerto `8000` debe ser público y `NEXT_PUBLIC_API_BASE_URL` debe contener esa dirección reenviada.
+Ejecútalos en **Terminal A** (la de la API) antes de arrancar el servidor, solo la primera vez después de clonar el repositorio:
+
+```bash
+cd services/api
+python seed.py                  # Crea admin + 15 proveedores en TinyDB
+python seed_inventory.py        # 6 activos + 4 entradas + 3 salidas en Supabase (solo si DATABASE_URL existe)
+```
+
+---
+
+## Notas importantes
+
+- `.env` y `.env.local` no se suben al repositorio (están en `.gitignore`).
+- Si modificas `.env.local` del backoffice, **detén** la Terminal B con `Ctrl+C` y vuelve a ejecutar `npm run dev`.
+- La URL de Codespaces cambia si recreas el contenedor. Cópiala siempre desde la pestaña **Puertos**.
+- El backend usa **dos bases de datos**: TinyDB (local, archivos `db/`) y Supabase (PostgreSQL, cloud). La de Supabase solo es necesaria para el módulo de inventario.
+- Para probar la API de inventario sin frontend, usa los comandos curl de `evidencias-pruebas/Hito-5-inventario-backend/`.
 
 
