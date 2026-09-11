@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env*
+*.log
+.git
+.gitignore
+__tests__/
+coverage/
+README.md
+AGENTS.md
+CLAUDE.md

@@ -46,89 +46,134 @@ _Proyecto transversal del Programa de Carrera en Ingeniería de IA — 4Geeks Ac
 
 | Herramienta | Versión mínima | Para qué |
 |-------------|---------------|----------|
-| **Python** | 3.11+ | Backend FastAPI |
-| **pip** | — | Gestor de paquetes Python |
-| **Node.js** | 20+ | Frontends Next.js |
-| **npm** | — | Gestor de paquetes JavaScript |
+| **Docker Engine** | 24+ | Motor de contenedores |
+| **Docker Compose** | v2 | Orquestación multi-contenedor (incluido en Docker Desktop) |
+
+> ✅ **Ya no necesitas instalar Node.js, Python ni npm localmente.** Todo se ejecuta dentro de contenedores Docker con las versiones correctas.
 
 ---
 
----
+## 🐳 Cómo ejecutar el repositorio (Docker Compose)
 
-## 🪟 Cómo usar los terminales
+Con **un solo comando** desde la raíz del repositorio levantas los tres servicios que antes requerían tres terminales separadas:
 
-Necesitas **tres terminales separadas**, una para cada servicio. No pueden compartir la misma terminal porque cada servicio se queda ejecutándose permanentemente.
-
-| Terminal | Servicio | Puerto | Se queda ejecutándose |
-|----------|----------|--------|-----------------------|
-| **Terminal A** | API (FastAPI) | `8000` | ✅ Sí, siempre |
-| **Terminal B** | Backoffice (Next.js) | `3000` | ✅ Sí, siempre |
-| **Terminal C** | Sitio web público (Next.js) | `3001` | ✅ Sí, siempre |
-
-> ⚠️ **Importante:** cada servicio debe correr en su propia terminal. No los arranques en la misma terminal porque el primero se bloquearía al ejecutar el segundo.
-
-Para crear una terminal nueva en VS Code: **Terminal → New Terminal** (o `Ctrl+Shift+Ñ`).
-
----
-
-## 🟢 Terminal A — Backend API (FastAPI)
-
-Este es el **primer servicio que debe arrancar**. Sin él, los frontends no tienen datos que mostrar.
-
-Base de datos dual: **TinyDB** para autenticación, usuarios, proveedores e incidencias. **Supabase (PostgreSQL vía SQLModel)** para inventario (activos, entradas, salidas).
+| Servicio | Puerto | Descripción |
+|----------|--------|-------------|
+| API (FastAPI) | `8000` | Backend con autenticación JWT + doble base de datos |
+| Backoffice (Next.js) | `3000` | Panel interno de administración |
+| Sitio web público (Next.js) | `3001` | Sitio público de Nexova |
 
 ### ▶️ Primera vez (solo al clonar el repositorio)
 
-En **Terminal A**, ejecuta:
+1. **Asegúrate de tener Docker instalado y en ejecución:**
+
+   ```bash
+   docker --version
+   docker compose version
+   ```
+
+2. **Asegúrate de que el archivo `.env` en la raíz existe.** Este archivo contiene las variables de entorno (no se sube a Git). Debe incluir al menos:
+
+   ```env
+   SECRET_KEY=<clave_hex_64_caracteres>
+   ACCESS_TOKEN_EXPIRE_MINUTES=30
+   USUARIO_ADMINISTRADOR=usuarioadministrador
+   CLAVE_ADMINISTRADOR=<contraseña_segura>
+   RESEND_API_KEY=<tu_api_key_de_resend>
+   RESEND_FROM_EMAIL=<email_remitente>
+   PASSWORD_RESET_FRONTEND_URL=http://localhost:3000
+   NEXT_PUBLIC_API_BASE_URL=http://backend:8000
+   ```
+
+   - `SECRET_KEY`: genérala con `openssl rand -hex 32`
+   - `DATABASE_URL`: opcional, solo si vas a usar inventario con Supabase
+
+   > ⚠️ **No definas `NEXT_PUBLIC_API_BASE_URL` en `.env`.** Las variables `NEXT_PUBLIC_` se incrustan literalmente en el JavaScript que recibe el navegador. El `api-client.ts` detecta automáticamente la URL correcta de la API: en local usa `http://localhost:8000` (puerto expuesto por Docker) y en Codespaces construye automáticamente la URL pública del puerto 8000.
+
+3. **Ejecuta los seeders** (solo la primera vez):
+
+   ```bash
+   # Primero construye la imagen del backend para poder ejecutar los seeders
+   docker compose build backend
+
+   # Seed de admin + proveedores
+   docker compose run --rm backend python seed.py
+
+   # Seed de inventario (solo si DATABASE_URL está configurada)
+   docker compose run --rm backend python seed_inventory.py
+   ```
+
+### ▶️ Cada vez que quieras usar la plataforma
+
+**Opción A — Ver los logs en vivo (modo foreground):**
 
 ```bash
-cd services/api
-pip install -r requirements.txt
+docker compose up
 ```
 
-Luego crea el archivo `services/api/.env` con este contenido (nunca lo subas al repositorio):
+La terminal se bloquea mostrando los logs de los tres servicios. Para detener todo: `Ctrl+C`.
 
-```env
-SECRET_KEY=<clave_hex_64_caracteres>
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-USUARIO_ADMINISTRADOR=usuarioadministrador
-CLAVE_ADMINISTRADOR=<contraseña_segura>
-DATABASE_URL=postgresql://postgres.xxxxx:password@pooler.supabase.com:6543/postgres
-```
-
-- `SECRET_KEY`: genérala con `openssl rand -hex 32`
-- `DATABASE_URL`: solo si vas a usar inventario; el resto funciona sin ella
-- `USUARIO_ADMINISTRADOR` / `CLAVE_ADMINISTRADOR`: credenciales del admin inicial
-
-> ⚠️ Si la contraseña de Supabase tiene `@`, `#` u otros caracteres especiales, haz URL-encode (ej. `@` → `%40`)
-
-Después, ejecuta los **seeders** también en Terminal A (solo la primera vez):
+**Opción B — Ejecutar en segundo plano (modo detached):**
 
 ```bash
-cd services/api
-python seed.py              # Crea admin + 15 proveedores
-python seed_inventory.py    # 6 activos + 4 entradas + 3 salidas (solo si DATABASE_URL está configurada)
+docker compose up -d
 ```
 
-### ▶️ Cada vez que quieras usar la API
+La terminal queda libre. Los contenedores siguen corriendo en segundo plano.
 
-En **Terminal A**, ejecuta:
+### 📖 Diferencias entre `docker compose up` y `docker compose up -d`
+
+| Situación | Usa |
+|---|---|
+| Quieres ver los logs en vivo mientras desarrollas | `docker compose up` |
+| Quieres liberar la terminal para otros comandos | `docker compose up -d` |
+| Recién clonaste el repo y quieres probar que todo funciona | `docker compose up` (ves errores de inmediato) |
+| Ya sabes que funciona y solo quieres tenerlo corriendo | `docker compose up -d` |
+
+### 📋 Comandos útiles
 
 ```bash
-cd services/api
-python -m uvicorn main:app --reload --port 8000
+# Ver estado de los servicios
+docker compose ps
+
+# Ver logs de todos los servicios en vivo (Ctrl+C para salir, los contenedores siguen)
+docker compose logs -f
+
+# Ver solo logs de un servicio específico
+docker compose logs backend
+
+# Ver últimas líneas de logs
+docker compose logs --tail=50
+
+# Detener todo
+docker compose down
+
+# Reconstruir imágenes después de cambios en Dockerfile
+docker compose build
+
+# Reconstruir y levantar de nuevo
+docker compose up -d --build
 ```
-SI ES EN CODESPACES ....
-En Codespaces añade `--host 0.0.0.0` al final y haz público el puerto 8000 (pestaña Puertos → click derecho → Port Visibility → Public).
 
-**Deja esta Terminal A corriendo.** Mientras esté activa, la API responde en:
+### 🌐 URLs de los servicios
 
-- Local: `http://localhost:8000`
-- Codespaces: `https://<nombre-del-codespace>-8000.app.github.dev`
+| Servicio | URL |
+|----------|-----|
+| Sitio web público | `http://localhost:3000` |
+| Backoffice | `http://localhost:3001` |
+| API (FastAPI) | `http://localhost:8000` |
+| Documentación Swagger | `http://localhost:8000/docs` |
 
-Documentación interactiva: entra a `/docs` (Swagger) o `/redoc` (ReDoc).
+### 🔄 Recarga en caliente (hot reload)
 
-### Endpoints disponibles
+Los bind mounts están configurados. Cualquier cambio que hagas en el código del host se refleja al instante:
+- Modificas un archivo del backoffice → el navegador recarga en `http://localhost:3001`.
+- Modificas una ruta de la API → Uvicorn reinicia automáticamente.
+- **No necesitas reconstruir las imágenes** mientras desarrollas.
+
+---
+
+## Endpoints disponibles de la API
 
 | Grupo | Ejemplos de rutas | Auth |
 |-------|-------------------|------|
@@ -149,46 +194,7 @@ Documentación interactiva: entra a `/docs` (Swagger) o `/redoc` (ReDoc).
 
 ---
 
-## 🟢 Terminal B — Frontend Backoffice (Next.js)
-
-Abre una **nueva terminal** (`Ctrl+Shift+Ñ` o Terminal → New Terminal). Esta es la **Terminal B**. No uses la Terminal A porque ahí sigue corriendo la API.
-
-### ▶️ Primera vez (solo al clonar el repositorio)
-
-En **Terminal B**, ejecuta:
-
-```bash
-cd uis/backoffice
-npm install
-```
-
-Luego crea `uis/backoffice/.env.local`. La variable `NEXT_PUBLIC_API_BASE_URL` debe apuntar a la API (la URL que copiaste de la pestaña Puertos):
-
-```env
-# API del Talent Pipeline Tracker (playground 4Geeks — externo)
-NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
-
-# API Nexova (FastAPI) — cambiar según entorno
-# Codespaces:
-NEXT_PUBLIC_API_BASE_URL=https://<nombre-del-codespace>-8000.app.github.dev
-# Local:
-# NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-```
-
-> ❌ No crees `NEXT_PUBLIC_INVENTORY_API_URL`. Todo usa `NEXT_PUBLIC_API_BASE_URL`. El prefijo `/inventory` distingue el recurso.
-
-### ▶️ Cada vez que quieras usar el backoffice
-
-En **Terminal B**, ejecuta:
-
-```bash
-cd uis/backoffice
-npm run dev -- --port 3000
-```
-
-**Deja esta Terminal B corriendo.** Abre el puerto 3000 desde la pestaña Puertos.
-
-### Rutas del backoffice
+## Rutas del backoffice
 
 | Ruta | Módulo | Descripción |
 |------|--------|-------------|
@@ -209,50 +215,27 @@ Todas requieren iniciar sesión excepto `/login` y `/register`.
 
 ---
 
-## 🟢 Terminal C — Sitio Web Público (Next.js)
-
-Abre una **tercera terminal** (`Ctrl+Shift+Ñ`). Esta es la **Terminal C**. La API (Terminal A) y el backoffice (Terminal B) deben seguir corriendo.
-
-### ▶️ Primera vez (solo al clonar el repositorio)
-
-En **Terminal C**, ejecuta:
-
-```bash
-cd uis/website
-npm install
-```
-
-### ▶️ Cada vez que quieras usarlo
-
-En **Terminal C**, ejecuta:
-
-```bash
-cd uis/website
-npm run dev -- --port 3001
-```
-
-**Deja esta Terminal C corriendo.** Abre el puerto 3001 desde la pestaña Puertos.
-
----
-
 ## Seeders (datos iniciales)
 
-Ejecútalos en **Terminal A** (la de la API) antes de arrancar el servidor, solo la primera vez después de clonar el repositorio:
+Ejecútalos solo la primera vez después de clonar el repositorio, usando Docker Compose:
 
 ```bash
-cd services/api
-python seed.py                  # Crea admin + 15 proveedores en TinyDB
-python seed_inventory.py        # 6 activos + 4 entradas + 3 salidas en Supabase (solo si DATABASE_URL existe)
+# Seed de admin + proveedores
+docker compose run --rm backend python seed.py
+
+# Seed de inventario (solo si DATABASE_URL está configurada en .env)
+docker compose run --rm backend python seed_inventory.py
 ```
 
 ---
 
 ## Notas importantes
 
-- `.env` y `.env.local` no se suben al repositorio (están en `.gitignore`).
-- Si modificas `.env.local` del backoffice, **detén** la Terminal B con `Ctrl+C` y vuelve a ejecutar `npm run dev`.
-- La URL de Codespaces cambia si recreas el contenedor. Cópiala siempre desde la pestaña **Puertos**.
-- El backend usa **dos bases de datos**: TinyDB (local, archivos `db/`) y Supabase (PostgreSQL, cloud). La de Supabase solo es necesaria para el módulo de inventario.
+- `.env` en la raíz no se sube al repositorio (está en `.gitignore`).
+- Si modificas `.env`, detén los contenedores con `docker compose down` y vuelve a levantarlos con `docker compose up -d`.
+- El backend usa **dos bases de datos**: TinyDB (local, dentro del contenedor) y Supabase (PostgreSQL, cloud). La de Supabase solo es necesaria para el módulo de inventario.
+- Los bind mounts hacen que los cambios en el código se reflejen al instante — **no necesitas reconstruir las imágenes** mientras desarrollas.
+- Si modificas un `Dockerfile` o un `package.json`, entonces sí necesitas reconstruir: `docker compose build`.
 - Para probar la API de inventario sin frontend, usa los comandos curl de `evidencias-pruebas/Hito-5-inventario-backend/`.
 
 
