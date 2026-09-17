@@ -475,4 +475,860 @@ Con estas dos abstracciones, el componente `ProductsPageClient` se reduciría de
 
 ---
 
-*Este documento se actualizará en el PASO 05 con las mediciones posteriores a las correcciones.*
+## Correcciones identificadas — Diagnóstico, solución y código (PASO 03)
+
+> **Fecha de identificación:** 2026-09-17
+> **Propósito:** Documentar cada corrección identificada con su diagnóstico específico, el cambio de código propuesto, y la métrica objetivo que pretende mejorar.
+
+A continuación se detallan las correcciones identificadas, ordenadas por prioridad de impacto en las métricas objetivo.
+
+---
+
+### 🔴 Corrección 1 — Code Splitting del bundle principal (main-app.js) en Backoffice
+
+**Métricas objetivo:** LCP, TBT, TTI, SI, bootup-time
+
+**Diagnóstico desde Lighthouse:**
+| Archivo | Tamaño | Contexto |
+|---------|--------|----------|
+| `main-app.js` | ~2.1 MB (transferido) | Chunk principal de Next.js que contiene React, ReactDOM, y TODOS los componentes del backoffice |
+| `app/layout.js` | ~180 KB | Layout global del backoffice |
+
+Lighthouse reporta que `main-app.js` es el recurso más pesado (total-byte-weight score 50, ~3.5MB total de página) y que **no hay code-splitting por ruta**. El chunk principal incluye componentes de todas las rutas del backoffice (inventario, suppliers, talent pipeline, incidencias, perfil, etc.).
+
+**Solución propuesta — Dynamic imports con `next/dynamic` en las páginas del backoffice:**
+
+```tsx
+// uis/backoffice/app/page.tsx — Página principal del dashboard
+"use client";
+
+import dynamic from "next/dynamic";
+import { Suspense, useState } from "react";
+
+// Los componentes se cargan solo cuando el usuario navega a ellos
+const DashboardContent = dynamic(
+  () => import("../components/dashboard/dashboard-content"),
+  {
+    loading: () => <DashboardSkeleton />,
+    ssr: false, // Evita hidratación costosa en servidor
+  }
+);
+
+function DashboardSkeleton() {
+  return (
+    <div className="dashboard-skeleton" aria-label="Cargando dashboard…" role="status">
+      <div className="skeleton-shimmer" style={{ height: 24, width: "60%", marginBottom: 16 }} />
+      <div className="skeleton-shimmer" style={{ height: 120, width: "100%", marginBottom: 12 }} />
+      <div className="skeleton-shimmer" style={{ height: 120, width: "100%" }} />
+    </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <div className="dashboard-container">
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+```tsx
+// uis/backoffice/app/backoffice/inventory/products/page.tsx — Página de inventario
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+
+const ProductsPageClient = dynamic(
+  () => import("./products-page-client").then((mod) => ({ default: mod.ProductsPageClient })),
+  { loading: () => <div className="skeleton-card" role="status">Cargando inventario…</div> }
+);
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="skeleton-card" role="status">Cargando inventario…</div>}>
+      <ProductsPageClient />
+    </Suspense>
+  );
+}
+```
+
+```tsx
+// uis/backoffice/app/suppliers/page.tsx — Página de suppliers
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+
+const SuppliersPageClient = dynamic(
+  () => import("./suppliers-page-client").then((mod) => ({ default: mod.SuppliersPageClient })),
+  { loading: () => <div className="skeleton-card" role="status">Cargando proveedores…</div> }
+);
+
+export default function SuppliersPage() {
+  return (
+    <Suspense fallback={<div className="skeleton-card" role="status">Cargando proveedores…</div>}>
+      <SuppliersPageClient />
+    </Suspense>
+  );
+}
+```
+
+**Impacto esperado:**
+- Reducción del tamaño del bundle inicial de ~2.1 MB a ~400 KB
+- LCP estimado: de 4.5 s → <2.0 s (Desktop), de 22.9 s → <4.0 s (Mobile)
+- TBT estimado: de 1,090 ms → <300 ms (Desktop), de 4,540 ms → <1,000 ms (Mobile)
+- TTI estimado: de 4.5 s → <2.5 s (Desktop)
+
+---
+
+### 🔴 Corrección 2 — Optimización del AuthGuard: fetch de /auth/me y renderizado bloqueante
+
+**Métricas objetivo:** LCP, FCP, TBT, TTI
+
+**Diagnóstico:** El componente `AuthGuard` (`uis/backoffice/components/auth/auth-guard.tsx`) es un `"use client"` que se monta a nivel de layout. En cada navegación, realiza un fetch a `/auth/me` que tarda entre ~2.5 s (Desktop) y ~5.1 s (Mobile) en completarse. Durante ese tiempo, la página no puede hidratar ni renderizar su contenido (el layout entero espera). El elementRenderDelay del LCP se debe directamente a este fetch bloqueante.
+
+**Solución propuesta — Caché de sesión + renderizado progresivo con skeleton:**
+
+```tsx
+// uis/backoffice/components/auth/auth-guard.tsx (refactorizado)
+"use client";
+
+import { useEffect, useState, useRef, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { apiRequest, getErrorMessage } from "../../lib/api-client";
+import { getAccessToken, setAccessToken } from "../../lib/auth";
+import type { CurrentUser } from "../../lib/auth-types";
+import { AuthNavigation } from "./auth-navigation";
+
+const AUTH_ROUTES = new Set(["/login", "/register"]);
+const PASSWORD_RECOVERY_ROUTES = new Set(["/forgot-password", "/reset-password"]);
+
+type GuardState = "checking" | "authenticated" | "public" | "error";
+
+// Caché de sesión en memoria para evitar refetch en navegaciones SPA
+let cachedUser: CurrentUser | null = null;
+let cachedPromise: Promise<CurrentUser> | null = null;
+
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [state, setState] = useState<GuardState>(() => {
+    // Optimización: si ya hay caché, usamos el estado directamente
+    if (cachedUser) return "authenticated";
+    const isAuthRoute = AUTH_ROUTES.has(pathname);
+    const isPasswordRecoveryRoute = PASSWORD_RECOVERY_ROUTES.has(pathname);
+    if (isPasswordRecoveryRoute || (isAuthRoute && !getAccessToken())) return "public";
+    return "checking";
+  });
+  const [error, setError] = useState("");
+  const mountedRef = useRef(true);
+
+  const validateSession = useCallback(async (): Promise<void> => {
+    const isAuthRoute = AUTH_ROUTES.has(pathname);
+    const isPasswordRecoveryRoute = PASSWORD_RECOVERY_ROUTES.has(pathname);
+
+    if (isPasswordRecoveryRoute) {
+      setState("public");
+      return;
+    }
+
+    if (!getAccessToken()) {
+      if (isAuthRoute) {
+        setState("public");
+      } else {
+        router.replace("/login");
+      }
+      return;
+    }
+
+    // Si ya tenemos el usuario en caché, no hacemos fetch
+    if (cachedUser) {
+      setState("authenticated");
+      return;
+    }
+
+    // Usar promesa cacheada para evitar fetch duplicado en StrictMode
+    if (!cachedPromise) {
+      cachedPromise = apiRequest<CurrentUser>("/auth/me").then((user) => {
+        cachedUser = user;
+        return user;
+      });
+    }
+
+    try {
+      await cachedPromise;
+      if (mountedRef.current) setState("authenticated");
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(getErrorMessage(err));
+        setState("error");
+      }
+      // Limpiar token inválido
+      if (getAccessToken()) {
+        import("../../lib/auth").then(({ clearAccessToken }) => clearAccessToken());
+      }
+    }
+  }, [pathname, router]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    validateSession();
+    return () => { mountedRef.current = false; };
+  }, [validateSession]);
+
+  // Renderizado inmediato del children + navegación mientras se valida
+  if (state === "authenticated") {
+    return (
+      <>
+        <AuthNavigation />
+        <main>{children}</main>
+      </>
+    );
+  }
+
+  if (state === "public") {
+    return <>{children}</>;
+  }
+
+  if (state === "error") {
+    return (
+      <div className="auth-error-container" role="alert">
+        <p>Error de autenticación: {error}</p>
+        <button onClick={() => { cachedPromise = null; cachedUser = null; validateSession(); }}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  // "checking" — mostrar skeleton inmediato sin esperar fetch
+  return (
+    <>
+      <AuthNavigation />
+      <main>
+        <div className="dashboard-skeleton" role="status" aria-label="Verificando sesión…">
+          <div className="skeleton-shimmer" style={{ height: 24, width: "40%" }} />
+          <div className="skeleton-shimmer" style={{ height: 200, width: "100%", marginTop: 16 }} />
+        </div>
+      </main>
+    </>
+  );
+}
+```
+
+**Impacto esperado:**
+- LCP Desktop: de 4.5 s → ~1.5 s (el fetch se ejecuta en paralelo al renderizado del skeleton)
+- LCP Mobile: de 22.9 s → ~3.5 s (evita el bloqueo total del renderizado)
+- El AuthNavigation se renderiza inmediatamente porque no espera la validación
+- Navegación SPA: el fetch solo ocurre 1 vez, las navegaciones posteriores usan caché
+
+---
+
+### 🔴 Corrección 3 — Optimización de imágenes y conversión a formatos modernos
+
+**Métricas objetivo:** LCP, total-byte-weight, Speed Index
+
+**Diagnóstico desde Lighthouse:**
+| Imagen | Tamaño actual | Formato | Problema |
+|--------|--------------|---------|----------|
+| `hero.png` | 450 KB | PNG | Sin compresión, formato obsoleto |
+| (posibles imágenes de fondo) | >200 KB | PNG | Sin WebP ni AVIF |
+
+**Solución propuesta — Configuración de Next.js para optimización automática de imágenes:**
+
+```typescript
+// uis/website/next.config.ts (actualizado)
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // Habilitar optimización de imágenes de Next.js
+  images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 días en CDN
+  },
+  // Compresión habilitada por defecto en Next.js
+  compress: true,
+  // Desactivar source maps en producción para reducir peso
+  productionBrowserSourceMaps: false,
+  // Cabeceras HTTP para mejorar caché
+  async headers() {
+    return [
+      {
+        source: "/:all*(svg|jpg|png|webp|avif|ico)",
+        locale: false,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        locale: false,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+```
+
+```tsx
+// uis/website/components/Hero.tsx — Imagen Hero optimizada con next/image
+import Image from "next/image";
+import styles from "../app/page.module.css";
+
+export function Hero() {
+  return (
+    <section id="inicio" className={styles.hero}>
+      <div className={styles.heroGlowA} aria-hidden="true" />
+      <div className={styles.heroGlowB} aria-hidden="true" />
+      <div className={`${styles.container} ${styles.heroGrid}`}>
+        <div>
+          <p className={styles.heroEyebrow}>Nexova | Talento estratégico</p>
+          <h1 className={styles.heroTitle}>
+            Construimos equipos excepcionales para empresas en crecimiento
+          </h1>
+          <p className={styles.heroSubtitle}>
+            Consultora de recursos humanos y adquisición de talento para empresas en crecimiento
+            que buscan acelerar contrataciones clave y fortalecer sus equipos.
+          </p>
+          <div className={styles.heroCtas}>
+            <a className={styles.primaryButton} href="/registro">
+              Únete a nuestro banco de talento
+            </a>
+            <span>Estrategia de talento para compañías en expansión</span>
+          </div>
+        </div>
+        <aside className={styles.heroCard}>
+          <p className={styles.heroCardTitle}>Cómo trabajamos</p>
+          <ul className={styles.stepList}>
+            <li>
+              <span>Diagnóstico y diseño del perfil</span>
+              <strong>Paso 1</strong>
+            </li>
+            <li>
+              <span>Búsqueda y evaluación de candidatos</span>
+              <strong>Paso 2</strong>
+            </li>
+            <li>
+              <span>Seguimiento de incorporación y ajuste</span>
+              <strong>Paso 3</strong>
+            </li>
+          </ul>
+        </aside>
+      </div>
+      {/* Hero image optimizada con next/image */}
+      <div className={styles.heroImageWrapper}>
+        <Image
+          src="/hero.webp"
+          alt="Equipo Nexova trabajando"
+          width={1200}
+          height={600}
+          priority  // Marcar como prioridad para LCP
+          sizes="(max-width: 768px) 100vw, 50vw"
+          quality={85}
+          className={styles.heroImage}
+        />
+      </div>
+    </section>
+  );
+}
+```
+
+**Impacto esperado:**
+- Peso de hero image: de 450 KB (PNG) → ~60-80 KB (WebP) → ~40-60 KB (AVIF) = **hasta 90% de reducción**
+- LCP Desktop se mantiene en ~1.0 s pero con mejor calidad visual percibida
+- Total-byte-weight: de ~3.5 MB a ~3.0 MB
+
+---
+
+### 🟠 Corrección 4 — Precarga y preconección a orígenes críticos
+
+**Métricas objetivo:** LCP, FCP, Speed Index
+
+**Diagnóstico:** Lighthouse no detecta etiquetas `<link rel="preconnect">` ni `dns-prefetch` para los orígenes de terceros y APIs que la página consulta. Esto añade latencia de DNS + TCP + TLS en cada solicitud.
+
+**Orígenes identificados que necesitan preconnect:**
+- `https://urban-chainsaw-r4xqp67g99vvc5q6x-3001.app.github.dev` (API de backoffice)
+- `https://playground.4geeks.com` (API de registro)
+- `https://gc.kes.v2.scr.kaspersky-labs.com` (Kaspersky — third-party de seguridad)
+
+**Solución propuesta — Preconnect y dns-prefetch en el layout:**
+
+```tsx
+// uis/backoffice/app/layout.tsx (fragmento del head con preconnects)
+import type { Metadata } from "next";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { AuthGuard } from "../components/auth/auth-guard";
+import "./globals.css";
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  weight: ["400", "600"],
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Nexova Backoffice",
+  description: "Aplicación interna de Nexova para operar y visualizar la lógica de negocio.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  // Determinar API base URL
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+
+  return (
+    <html lang="es" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        {/* Preconnect a orígenes críticos para reducir latencia de conexión */}
+        {apiUrl && (
+          <>
+            <link rel="dns-prefetch" href={apiUrl} />
+            <link rel="preconnect" href={apiUrl} crossOrigin="anonymous" />
+          </>
+        )}
+        <link rel="dns-prefetch" href="https://playground.4geeks.com" />
+        <link rel="preconnect" href="https://playground.4geeks.com" crossOrigin="anonymous" />
+        {/* Precargar la fuente principal para evitar FOIT/FOUT */}
+        <link
+          rel="preload"
+          href="/_next/static/media/space-grotesk-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
+      <body>
+        <AuthGuard>{children}</AuthGuard>
+      </body>
+    </html>
+  );
+}
+```
+
+```tsx
+// uis/website/app/layout.tsx (fragmento del head con preconnects)
+import type { Metadata } from "next";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import "./globals.css";
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  weight: ["400", "600"],
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Nexova | Consultora de talento y recursos humanos",
+  description:
+    "Consultora especializada en headhunting, formación corporativa y outsourcing para empresas en España y Estados Unidos.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="es" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        {/* Preconnect para mejorar velocidad de conexión a recursos críticos */}
+        <link rel="dns-prefetch" href="https://playground.4geeks.com" />
+        <link rel="preconnect" href="https://playground.4geeks.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://gc.kes.v2.scr.kaspersky-labs.com" />
+        {/* Precargar la fuente principal */}
+        <link
+          rel="preload"
+          href="/_next/static/media/space-grotesk-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+**Impacto esperado:**
+- Speed Index Desktop: de 1.2 s → ~1.0 s
+- Speed Index Mobile: de 2.7 s → ~2.0 s
+- FCP Mobile: de 2.7 s → ~2.2 s
+- Elimina negociación DNS+TCP+TLS del path crítico para estos orígenes
+
+---
+
+### 🟠 Corrección 5 — Lazy loading de componentes pesados con `next/dynamic` y estados skeleton
+
+**Métricas objetivo:** TBT, bootup-time, mainthread-work, TTI
+
+**Diagnóstico:** Los componentes `"use client"` en backoffice se cargan de forma eager (inmediata) aunque algunos solo son visibles después de la interacción del usuario. Lighthouse detecta ~59 KiB de JavaScript no utilizado en backoffice (solo de Kaspersky) y los bundles de `node_modules_next` en website contienen ~148 KB no utilizados cada uno.
+
+**Solución propuesta — Estrategia de carga diferida por interacción del usuario:**
+
+```tsx
+// uis/backoffice/app/backoffice/inventory/orders/page.tsx — Lazy loading por pestaña
+import dynamic from "next/dynamic";
+import { Suspense, useState } from "react";
+
+const InboundOrderClient = dynamic(
+  () => import("./inbound/inbound-order-client"),
+  { loading: () => <div className="skeleton-card" role="status">Cargando pedidos de entrada…</div> }
+);
+
+const OutboundOrderClient = dynamic(
+  () => import("./outbound/outbound-order-client"),
+  { loading: () => <div className="skeleton-card" role="status">Cargando pedidos de salida…</div> }
+);
+
+const OrdersHistoryClient = dynamic(
+  () => import("./orders-history-client"),
+  { loading: () => <div className="skeleton-card" role="status">Cargando historial…</div> }
+);
+
+type TabId = "inbound" | "outbound" | "history";
+
+export default function OrdersPage() {
+  const [activeTab, setActiveTab] = useState<TabId>("inbound");
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "inbound", label: "Pedidos de entrada" },
+    { id: "outbound", label: "Pedidos de salida" },
+    { id: "history", label: "Historial" },
+  ];
+
+  return (
+    <div className="orders-container">
+      <nav className="tabs-nav" role="tablist" aria-label="Tipo de pedidos">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={activeTab === tab.id ? "tab-active" : "tab-inactive"}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      <Suspense fallback={<div className="skeleton-card" role="status">Cargando…</div>}>
+        {activeTab === "inbound" && <InboundOrderClient />}
+        {activeTab === "outbound" && <OutboundOrderClient />}
+        {activeTab === "history" && <OrdersHistoryClient />}
+      </Suspense>
+    </div>
+  );
+}
+```
+
+```tsx
+// uis/backoffice/app/incidents/page.tsx — Lazy loading con next/dynamic
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
+
+const IncidentManager = dynamic(
+  () => import("./incident-manager"),
+  {
+    loading: () => (
+      <div className="skeleton-card" role="status" aria-label="Cargando gestor de incidencias…">
+        <div className="skeleton-shimmer" style={{ height: 40, width: "100%", marginBottom: 12 }} />
+        <div className="skeleton-shimmer" style={{ height: 300, width: "100%" }} />
+      </div>
+    ),
+    ssr: false, // El gestor de incidencias es altamente interactivo, no necesita SSR
+  }
+);
+
+export default function IncidentsPage() {
+  return (
+    <Suspense fallback={<div className="skeleton-card" role="status">Cargando gestor de incidencias…</div>}>
+      <IncidentManager />
+    </Suspense>
+  );
+}
+```
+
+**Impacto esperado:**
+- TBT Desktop: de 1,090 ms → <300 ms
+- TBT Mobile: de 4,540 ms → <1,500 ms
+- Bootup-time Mobile: de 5.4 s → <2.0 s
+- Mainthread work Mobile: de 6.8 s → <3.0 s
+
+---
+
+### 🟠 Corrección 6 — Eliminación de JavaScript legacy y no utilizado
+
+**Métricas objetivo:** TBT, bootup-time, total-byte-weight
+
+**Diagnóstico:** Lighthouse detecta JavaScript no utilizado en múltiples bundles. Los peores infractores son:
+
+| Bundle | Tamaño total | No utilizado | % Desperdicio |
+|--------|-------------|-------------|:-------------:|
+| `node_modules_next/dist` | 244 KB | 148 KB | 61% |
+| `node_modules_next/dist` (2) | 188 KB | 105 KB | 56% |
+| `node_modules_next/dist` (3) | 180 KB | 74 KB | 41% |
+| Kaspersky `main.js` | 110 KB | 59 KB | 54% |
+
+**Solución propuesta — Eliminar dependencias no utilizadas y optimizar imports:**
+
+```bash
+# Identificar y eliminar dependencias no utilizadas del proyecto
+cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW
+npx depcheck  # Identifica paquetes instalados pero no importados
+# Eliminar dependencias huérfanas
+npm uninstall <paquetes-no-usados> 2>/dev/null || true
+```
+
+```typescript
+// En lugar de importaciones completas de bibliotecas, usar imports tree-shakeables:
+
+// ❌ Antes: Import completo de lodash (ocupa ~70 KB en el bundle)
+// import _ from "lodash";
+
+// ✅ Después: Import específico y tree-shakeable
+// import debounce from "lodash/debounce";
+// (o mejor aún, usar implementación nativa: AbortController + setTimeout)
+
+// ❌ Antes: Import de toda una biblioteca de componentes
+// import { Button, Card, Table, Modal, Form } from "some-ui-library";
+
+// ✅ Después: Import solo del componente necesario
+// import Button from "some-ui-library/button";
+```
+
+```json
+// package.json — Añadir análisis de bundle para CI
+{
+  "scripts": {
+    "analyze:bundle": "ANALYZE=true next build",
+    "lint:unused": "npx depcheck --json > depcheck-report.json"
+  }
+}
+```
+
+**Impacto esperado:**
+- JavaScript total transferido: de ~3.5 MB a ~2.0 MB
+- Tiempo de parseo/compilación en Mobile reducido proporcionalmente
+
+---
+
+### 🟡 Corrección 7 — Optimización del fetch de sesión con SWR o caché local
+
+**Métricas objetivo:** LCP, TBT (interacciones tempranas)
+
+**Diagnóstico adicional:** El fetch a `/auth/me` se ejecuta de forma secuencial: primero Next.js hidrata, luego el efecto en `AuthGuard` dispara el fetch. Esto significa que durante ~2-5 segundos la página está "congelada" esperando la respuesta de autenticación.
+
+**Solución propuesta — Fetch temprano con `localStorage` como caché de sesión:**
+
+```typescript
+// packages/shared/src/session-cache.ts
+// Hook compartido para caché de sesión con validez temporal
+
+const SESSION_CACHE_KEY = "nexova:session";
+const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+interface CachedSession {
+  user: CurrentUser;
+  timestamp: number;
+}
+
+export function getCachedSession(): CurrentUser | null {
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const cached: CachedSession = JSON.parse(raw);
+    if (Date.now() - cached.timestamp > SESSION_TTL_MS) {
+      localStorage.removeItem(SESSION_CACHE_KEY);
+      return null;
+    }
+    return cached.user;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedSession(user: CurrentUser): void {
+  const cache: CachedSession = { user, timestamp: Date.now() };
+  localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(cache));
+}
+
+export function clearCachedSession(): void {
+  localStorage.removeItem(SESSION_CACHE_KEY);
+}
+```
+
+**Impacto esperado:**
+- Fetch de `/auth/me` se elimina del path crítico en navegaciones SPA
+- Tiempo de renderizado inicial reducido en ~2-5 s
+- Especialmente crítico para Mobile donde el fetch tarda ~5.1 s
+
+---
+
+### 🟡 Corrección 8 — Eliminación de render-blocking resources en Website
+
+**Métricas objetivo:** FCP, Speed Index
+
+**Diagnóstico:** Lighthouse no marca específicamente render-blocking resources para el website, pero el alto TBT en Mobile (470 ms) y la presencia de Kaspersky como third-party sugieren que scripts externos se cargan de forma bloqueante.
+
+**Solución propuesta — Diferir scripts de terceros con `strategy: "lazyOnload"`:**
+
+```tsx
+// uis/website/app/layout.tsx — Script de Kaspersky cargado de forma diferida
+import Script from "next/script";
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="es" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        {/* ...preconnects y preloads... */}
+      </head>
+      <body>
+        {children}
+        {/* Script de Kaspersky cargado lazyOnload para no bloquear renderizado */}
+        <Script
+          src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js"
+          strategy="lazyOnload"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+```tsx
+// uis/backoffice/app/layout.tsx — Todos los scripts externos con lazyOnload
+import Script from "next/script";
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+
+  return (
+    <html lang="es" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        {/* ...preconnects y preloads... */}
+        <link rel="dns-prefetch" href="https://gc.kes.v2.scr.kaspersky-labs.com" />
+      </head>
+      <body>
+        <AuthGuard>{children}</AuthGuard>
+        {/* Cargar Kaspersky de forma diferida para no bloquear ni LCP ni TBT */}
+        <Script
+          src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js"
+          strategy="lazyOnload"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+**Impacto esperado:**
+- FCP Mobile: de 2.7 s → ~2.2 s
+- TBT Mobile: de 470 ms → ~300 ms
+- Elimina ~59 KB de JavaScript no utilizado del path crítico de renderizado
+
+---
+
+### 🟡 Corrección 9 — Corrección de a11y: mismatch de etiqueta en link del header
+
+**Métricas objetivo:** Accessibility (no performance, pero identificado en auditoría)
+
+**Diagnóstico:** Un elemento `<a>` en el header (la marca "N") tiene texto visible "N" pero `aria-label="Ir al inicio de Nexova"`, que no coincide con el texto visible. Esto causa error de accesibilidad.
+
+**Solución propuesta:**
+
+```tsx
+// uis/website/components/Header.tsx (corregido)
+import type { NavItem } from "./types";
+import styles from "../app/page.module.css";
+
+type HeaderProps = {
+  items: NavItem[];
+};
+
+export function Header({ items }: HeaderProps) {
+  return (
+    <header className={styles.header}>
+      <div className={styles.container}>
+        <a className={styles.brand} href="#inicio" aria-label="Ir al inicio de Nexova">
+          <span className={styles.brandMark} aria-hidden="true">N</span>
+          <span className={styles.brandText}>Nexova</span>
+        </a>
+        <nav aria-label="Navegación principal">
+          <ul className={styles.navList}>
+            {items.map((item) => (
+              <li key={item.href}>
+                <a className={styles.navLink} href={item.href}>
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+  );
+}
+```
+
+**Impacto:** Puntuación de accesibilidad sube de 100 → 100 (se mantiene perfecta). La etiqueta ahora cumple con WCAG 2.1 Success Criterion 2.5.3 (Label in Name).
+
+---
+
+### Tabla resumen de correcciones
+
+| # | Corrección | Prioridad | Archivos afectados | Métrica objetivo | Impacto esperado |
+|:-:|-----------|:---------:|--------------------|------------------|:----------------:|
+| 1 | Code splitting con `next/dynamic` | 🔴 Alta | `page.tsx` (varios backoffice) | LCP, TBT, TTI | LCP desktop 4.5→2.0s / mobile 22.9→4.0s |
+| 2 | AuthGuard con caché de sesión | 🔴 Alta | `auth-guard.tsx` | LCP, FCP, TBT | LCP desktop 4.5→1.5s / mobile 22.9→3.5s |
+| 3 | Imágenes WebP/AVIF con `next/image` | 🔴 Alta | `next.config.ts`, `Hero.tsx` | LCP, byte-weight | Hero image 450KB→60KB (-87%) |
+| 4 | Preconnect a orígenes críticos | 🟠 Media | `layout.tsx` (ambos) | FCP, SI, LCP | FCP mobile 2.7→2.2s |
+| 5 | Lazy loading por pestañas/tabs | 🟠 Media | `orders/page.tsx`, `incidents/page.tsx` | TBT, bootup-time | TBT mobile 4,540→1,500ms |
+| 6 | Árbol de dependencias optimizado | 🟠 Media | `package.json`, imports | TBT, byte-weight | JS total 3.5MB→2.0MB |
+| 7 | Session cache con localStorage | 🟡 Baja | `session-cache.ts`, `auth-guard.tsx` | LCP, TBT | Elimina fetch de path crítico |
+| 8 | Scripts third-party lazyOnload | 🟡 Baja | `layout.tsx` (ambos) | FCP, TBT | 59KB JS eliminado de path crítico |
+| 9 | Accesibilidad label in name | 🟡 Baja | `Header.tsx` (website) | Accesibilidad | WCAG 2.5.3 compliance |
+
+---
+
+## Secuencia priorizada de ejecución de correcciones
+
+> **Criterio:** KPI principales (LCP, TBT/INP, Performance) antes que auditorías secundarias.
+> **Nota:** Las 9 correcciones (C1-C9) resuelven los problemas #2, #3, #4, #5, #6, #7, #8, #9 y #12.
+> Los problemas #1 (SEO), #10 (source maps), #11 (bf-cache) y #13 (timeout) quedan fuera de esta secuencia por ser de entorno/ configuración.
+
+| Orden | Corrección | Resuelve problemas | Frontend | KPI principal | Impacto esperado |
+|:----:|:----------:|:------------------:|:--------:|:-------------:|:----------------:|
+| **1** 🔴 | **C1** — Code splitting con `next/dynamic` | #5 LCP 4.5s, #8 LCP 22.9s, #6 TBT 1,090ms, #9 TBT 4,540ms, #7 SI 2.8s | Backoffice | **LCP**, TBT | LCP Desktop 4.5s→~2.0s / Mobile 22.9s→~4.0s |
+| **2** 🔴 | **C2** — AuthGuard con caché de sesión y skeleton | #5 elementRenderDelay 4,165ms, #8 fetch /auth/me 5.1s | Backoffice | **LCP**, FCP | LCP Desktop 4.5s→~1.5s / Mobile→~3.5s |
+| **3** 🔴 | **C5** — Lazy loading por pestañas con `next/dynamic` | #6 TBT 1,090ms, #9 TBT 4,540ms, #4 main-thread 2.7s | Backoffice | **TBT/INP** | TBT Desktop 1,090ms→<300ms / Mobile→<1,500ms |
+| **4** 🔴 | **C6** — Tree-shaking y JS no utilizado | #2 JS no utilizado 391KB, #4 main-thread 2.7s | Website + Backoffice | **TBT/INP** | JS total ~3.5MB→~2.0MB |
+| **5** 🟠 | **C8** — Scripts third-party con `lazyOnload` | #3 render-blocking 1,330ms, #6/#9 TBT | Website + Backoffice | **FCP**, TBT | FCP Mobile 2.7s→~2.2s |
+| **6** 🟠 | **C4** — Preconnect + dns-prefetch | #3 render-blocking, #5/#8 LCP, #7 SI | Website + Backoffice | **FCP**, SI | FCP Mobile 2.7s→~2.2s / SI→~2.0s |
+| **7** 🟠 | **C3** — Imágenes WebP/AVIF con `next/image` | #5/#8 LCP por hero image 450KB PNG | Website | **LCP** | Hero 450KB→~60KB (-87%) |
+| **8** 🟡 | **C7** — Session cache con localStorage | #5 fetch /auth/me secuencial en SPA | Backoffice | **LCP**, TBT | Fetch fuera del path crítico |
+| **9** 🟡 | **C9** — Corrección a11y label in name | #12 mismatch de etiqueta en header | Website | Accesibilidad | WCAG 2.5.3 compliance |
+
+> **🔴 Órdenes 1-4:** Impacto directo en Performance Score y Core Web Vitals (Backoffice primero, que tiene peor puntuación: 33).
+> **🟠 Órdenes 5-7:** Impacto en métricas de renderizado (FCP, SI).
+> **🟡 Órdenes 8-9:** Mejoras secundarias (UX, accesibilidad).
+
+---
