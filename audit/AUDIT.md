@@ -226,23 +226,6 @@
 
 ---
 
-## Priorización de correcciones (PASO 04)
-
-Basado en el análisis, el orden de prioridad recomendado es:
-
-1. **🔴 Backoffice Móvil LCP (22.9 s)** — Reducir el tiempo de respuesta del endpoint `/auth/me`, aplicar code-splitting en componentes del dashboard, eliminar render-blocking resources.
-2. **🔴 Backoffice Desktop LCP (4.5 s)** — Misma estrategia: optimizar fetch de autenticación, cargar componentes críticos primero.
-3. **🔴 Backoffice TBT (1,090 ms / 4,540 ms)** — Reducir JavaScript no utilizado, lazy-loading de componentes secundarios.
-4. **🟡 Website Móvil TBT/TTI (470 ms / 6.9 s)** — Eliminar JavaScript no utilizado (391 KiB), diferir scripts de terceros.
-5. **🟡 Website Móvil render-blocking (1,330 ms)** — Optimizar carga de CSS y scripts.
-6. **🟡 SEO (ambos frontends)** — Revisar directivas de indexación para producción.
-
-> **Nota:** Las puntuaciones de Accessibility y Best Practices están en 100 en todos los casos, lo cual es excelente y no requiere intervención.
-
----
-
----
-
 ## Análisis de refactorización — Código duplicado identificado (PASO 02)
 
 A continuación se documentan dos casos de código duplicado entre archivos que son candidatos a ser extraídos en componentes compartidos o Custom Hooks.
