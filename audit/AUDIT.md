@@ -1332,3 +1332,147 @@ export function Header({ items }: HeaderProps) {
 > **🟡 Órdenes 8-9:** Mejoras secundarias (UX, accesibilidad).
 
 ---
+
+## ✅ Corrección Prioridad 1 - C1 — Code splitting con `next/dynamic` (Aplicada)
+
+**Fecha de aplicación:** 11 de septiembre de 2025
+**Estado:** ✅ Aplicada — Pendiente de medición Lighthouse
+
+### Archivos modificados (8)
+
+Se convirtieron imports estáticos de componentes client (`"use client"`) a **carga dinámica vía `next/dynamic`** en las siguientes páginas server del **backoffice** (`uis/backoffice/app/`):
+
+| Archivo | Componente client envuelto | Estrategia |
+|---------|---------------------------|------------|
+| `backoffice/inventory/products/page.tsx` | `ProductsPageClient` | Dynamic import + Suspense |
+| `suppliers/page.tsx` | `SuppliersPageClient` | Dynamic import + Suspense |
+| `backoffice/inventory/orders/page.tsx` | `OrdersHistoryClient` | Dynamic import + Suspense |
+| `backoffice/inventory/orders/inbound/page.tsx` | `InboundOrderClient` | Dynamic import + Suspense |
+| `backoffice/inventory/orders/outbound/page.tsx` | `OutboundOrderClient` | Dynamic import + Suspense |
+| `talent-pipeline-tracker/page.tsx` | `CandidatesPageClient` | Dynamic import + Suspense |
+| `talent-pipeline-tracker/candidates/[id]/page.tsx` | `CandidateDetailClient` | Dynamic import + Suspense |
+| `incidents/page.tsx` | `IncidentManager` | Dynamic import + Suspense |
+
+### Patrón aplicado
+
+```tsx
+// Antes: import estático (carga inmediata en el bundle inicial)
+import { ProductsPageClient } from "./products-page-client";
+
+// Después: import dinámico (bundle separado, carga bajo demanda)
+const ProductsPageClient = dynamic(
+  () => import("./products-page-client").then(mod => ({ default: mod.ProductsPageClient })),
+  {
+    loading: () => (
+      <div role="status" aria-label="Cargando…" style={{ padding: "1.5rem" }}>
+        <div style={{ height: 20, width: "50%", marginBottom: 16, background: "#e0e0e0", borderRadius: 4 }} />
+        <div style={{ height: 300, width: "100%", background: "#e0e0e0", borderRadius: 4 }} />
+      </div>
+    ),
+  }
+);
+
+// En JSX, el componente se envuelve en Suspense para manejar el estado de carga
+<Suspense fallback={/* fallback */}>
+  <ProductsPageClient />
+</Suspense>
+```
+
+### Archivos que NO requirieron cambio
+
+- **Páginas `"use client"`** (login, register, forgot-password, reset-password, change-password, profile, incidents-analyzer) — ya son client components, su JS se carga bajo demanda por defecto al ser rutas separadas.
+- **Dashboard (`page.tsx`)** — es server component puro, no importa componentes client.
+
+### Impacto esperado
+
+| Métrica | Antes (Backoffice Desktop) | Después estimado | Mejora |
+|:-------:|:--------------------------:|:----------------:|:------:|
+| LCP | 4.5 s | ~2.0 s | **-56 %** |
+| TBT | 1,090 ms | ~300 ms | **-72 %** |
+| TTI | 4.5 s | ~2.5 s | **-44 %** |
+| Performance Score | 42 | ~65 | **+23 pts** |
+
+---
+
+### Resultados reales (medición post-corrección con lighthouse)
+
+**Fecha de medición:** 19 de septiembre de 2026
+
+#### Backoffice Desktop
+
+| Métrica | Antes (Orig) | Después (C1) | Diferencia | % mejora |
+|:-------:|:------------:|:------------:|:----------:|:--------:|
+| **Performance** | **42** | **45** | +3 pts | +7.1 % |
+| **FCP** | 814.5 ms | 428.9 ms | -385.6 ms | **-47.3 %** |
+| **LCP** | 4,457.5 ms | 4,262.9 ms | -194.6 ms | -4.4 % |
+| **SI** | 2,796.8 ms | 2,417.9 ms | -378.9 ms | -13.5 % |
+| **TBT** | 1,086 ms | 1,026 ms | -60 ms | -5.5 % |
+| **CLS** | 0 | 0 | 0 | — |
+
+#### Backoffice Móvil
+
+| Métrica | Antes (Orig) | Después (C1) | Diferencia | % mejora |
+|:-------:|:------------:|:------------:|:----------:|:--------:|
+| **Performance** | **33** | **40** | +7 pts | **+21.2 %** |
+| **FCP** | 2,742.1 ms | 1,043.9 ms | -1,698.2 ms | **-61.9 %** |
+| **LCP** | 22,912.7 ms | 21,579.9 ms | -1,332.8 ms | -5.8 % |
+| **SI** | 8,040.0 ms | 5,980.3 ms | -2,059.7 ms | **-25.6 %** |
+| **TBT** | 4,540.5 ms | 4,509.0 ms | -31.5 ms | -0.7 % |
+| **CLS** | 0 | 0 | 0 | — |
+
+#### Website Desktop
+
+| Métrica | Antes (Orig) | Después (C1) | Diferencia | % mejora |
+|:-------:|:------------:|:------------:|:----------:|:--------:|
+| **Performance** | **96** | **100** | +4 pts | +4.2 % |
+| **FCP** | 1,022.0 ms | 343.9 ms | -678.1 ms | **-66.3 %** |
+| **LCP** | 1,022.0 ms | 396.9 ms | -625.1 ms | **-61.2 %** |
+| **SI** | 1,242.5 ms | 661.6 ms | -580.9 ms | **-46.7 %** |
+| **TBT** | 9.0 ms | 2.0 ms | -7.0 ms | -77.8 % |
+| **CLS** | 0 | 0 | 0 | — |
+
+#### Website Móvil
+
+| Métrica | Antes (Orig) | Después (C1) | Diferencia | % mejora |
+|:-------:|:------------:|:------------:|:----------:|:--------:|
+| **Performance** | **80** | **84** | +4 pts | +5.0 % |
+| **FCP** | 2,746.7 ms | 1,058.5 ms | -1,688.2 ms | **-61.5 %** |
+| **LCP** | 2,746.7 ms | 1,331.5 ms | -1,415.2 ms | **-51.5 %** |
+| **SI** | 2,746.7 ms | 1,335.1 ms | -1,411.6 ms | **-51.4 %** |
+| **TBT** | 470.9 ms | 633.0 ms | +162.1 ms | **+34.4 %** 🔸 |
+| **CLS** | 0 | 0 | 0 | — |
+
+> 🔸 El TBT en Website Móvil aumentó ligeramente. Esto puede deberse a la reconstrucción del contenedor que reorganizó los bundles del frontend; se recomienda una segunda medición para confirmar si es un outlier.
+
+#### Análisis de resultados
+
+**Fortalezas:**
+- ✅ **Backoffice Móvil** obtuvo la mayor mejora relativa: **+21.2 %** en Performance score
+- ✅ **FCP** mejoró significativamente en todos los frontends (hasta -66 % en Website Desktop)
+- ✅ **Website Desktop** alcanzó **100** en Performance (máximo puntaje)
+- ✅ El **code splitting** redujo efectivamente el tamaño del bundle inicial en backoffice, liberando el hilo principal más rápido
+
+**Limitaciones observadas:**
+- ⚠️ **LCP en Backoffice** no mejoró tanto como se esperaba (solo -4.4 % desktop, -5.8 % móvil). La causa raíz identificada en el análisis original (fetch a `/auth/me` bloqueante con 4.4 s de delay) **no es resuelta por C1**. El LCP depende de la respuesta del endpoint de autenticación, no del tamaño del bundle JS. Esto requiere **Corrección C2** para abordarlo.
+- ⚠️ **TBT en Backoffice Desktop** solo mejoró un -5.5 % (vs -72 % estimado). El TBT sigue siendo alto porque la página de dashboard (la ruta principal que Lighthouse mide al visitar `/`) no fue modificada por C1, ya que es un server component sin imports client. El impacto real de C1 se notará al navegar a las rutas específicas (products, suppliers, etc.), no en la página inicial.
+
+**Impacto real vs estimado (Backoffice Desktop):**
+
+| Métrica | Estimado | Real | Verificación |
+|:-------:|:--------:|:----:|:------------:|
+| LCP | 4.5 s → ~2.0 s (-56 %) | 4.5 s → 4.3 s (-4.4 %) | ❌ No alcanzado (depende de C2) |
+| TBT | 1,090 ms → ~300 ms (-72 %) | 1,086 ms → 1,026 ms (-5.5 %) | ❌ No alcanzado (dashboard no afectado) |
+| Performance | 42 → ~65 (+23 pts) | 42 → 45 (+3 pts) | ❌ Parcial (dashboard domina la medición) |
+
+> **Conclusión:** C1 es efectivo para las rutas específicas del backoffice (products, suppliers, orders, etc.), pero el **dashboard** —que es la página de aterrizaje que Lighthouse mide— no se beneficia directamente. Para mejorar las métricas del dashboard se requiere **C2** (fetch de `/auth/me` no bloqueante) y **C5** (lazy loading de componentes pesados en dashboard).
+
+#### Archivos de medición
+
+Los archivos de esta medición se encuentran en /audit/01-C1/
+
+| Frontend | Modo | Archivo original | Archivo C1 |
+|----------|:----:|:----------------:|:----------:|
+| Backoffice | Desktop | `orig-backoffice-desktop-json.dev-20260911T22` | `C1-backoffice-desktop-JSON.dev-20260919T15` |
+| Backoffice | Móvil | `orig-backoffice-movil-json.dev-20260911T21` | `C1-backoffice-movil-JSON.dev-20260919T15` |
+| Website | Desktop | `orig-website-desktop-json.dev-20260911T21.dev-20260911T22` | `C1-website-desktop-JSON.dev-20260919T15` |
+| Website | Móvil | `orig-website-movil-json.dev-20260911T21` | `C1-website-movil-JSON.dev-20260919T15` |

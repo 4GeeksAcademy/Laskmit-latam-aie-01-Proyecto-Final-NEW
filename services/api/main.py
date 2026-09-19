@@ -47,8 +47,9 @@ except ModuleNotFoundError:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: crear tablas en Supabase si no existen
-    SQLModel.metadata.create_all(supabase_engine)
+    # Startup: crear tablas en Supabase si DATABASE_URL está configurada
+    if supabase_engine is not None:
+        SQLModel.metadata.create_all(supabase_engine)
     yield
 
 
@@ -78,4 +79,7 @@ app.include_router(incidents_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)
-app.include_router(inventory_router)
+
+# Solo incluir rutas de inventario si Supabase está configurado
+if supabase_engine is not None:
+    app.include_router(inventory_router)

@@ -1,5 +1,19 @@
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import styles from "../inventory.module.css";
-import { OrdersHistoryClient } from "./orders-history-client";
+
+const OrdersHistoryClient = dynamic(
+  () => import("./orders-history-client").then((mod) => ({ default: mod.OrdersHistoryClient })),
+  {
+    loading: () => (
+      <div role="status" aria-label="Cargando historial…"
+        style={{ padding: "1.5rem", background: "#fff", borderRadius: 8 }}>
+        <div style={{ height: 20, width: "60%", marginBottom: 12, background: "#e0e0e0", borderRadius: 4 }} />
+        <div style={{ height: 300, width: "100%", background: "#e0e0e0", borderRadius: 4 }} />
+      </div>
+    ),
+  }
+);
 
 export default function OrdersHistoryPage() {
   return (
@@ -16,7 +30,10 @@ export default function OrdersHistoryPage() {
         </p>
       </header>
 
-      <OrdersHistoryClient />
+      <Suspense fallback={<div role="status" aria-label="Cargando…"
+        style={{ padding: "1.5rem" }}>Cargando…</div>}>
+        <OrdersHistoryClient />
+      </Suspense>
     </div>
   );
 }

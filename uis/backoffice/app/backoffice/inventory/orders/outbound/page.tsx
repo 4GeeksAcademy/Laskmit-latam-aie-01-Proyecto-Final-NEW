@@ -1,5 +1,19 @@
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import styles from "../../inventory.module.css";
-import { OutboundOrderClient } from "./outbound-order-client";
+
+const OutboundOrderClient = dynamic(
+  () => import("./outbound-order-client").then((mod) => ({ default: mod.OutboundOrderClient })),
+  {
+    loading: () => (
+      <div role="status" aria-label="Cargando formulario…"
+        style={{ padding: "1.5rem", background: "#fff", borderRadius: 8 }}>
+        <div style={{ height: 24, width: "50%", marginBottom: 16, background: "#e0e0e0", borderRadius: 4 }} />
+        <div style={{ height: 200, width: "100%", background: "#e0e0e0", borderRadius: 4 }} />
+      </div>
+    ),
+  }
+);
 
 export default function OutboundOrderPage() {
   return (
@@ -17,7 +31,10 @@ export default function OutboundOrderPage() {
         </p>
       </header>
 
-      <OutboundOrderClient />
+      <Suspense fallback={<div role="status" aria-label="Cargando…"
+        style={{ padding: "1.5rem" }}>Cargando…</div>}>
+        <OutboundOrderClient />
+      </Suspense>
     </div>
   );
 }
