@@ -1476,3 +1476,183 @@ Los archivos de esta medición se encuentran en /audit/01-C1/
 | Backoffice | Móvil | `orig-backoffice-movil-json.dev-20260911T21` | `C1-backoffice-movil-JSON.dev-20260919T15` |
 | Website | Desktop | `orig-website-desktop-json.dev-20260911T21.dev-20260911T22` | `C1-website-desktop-JSON.dev-20260919T15` |
 | Website | Móvil | `orig-website-movil-json.dev-20260911T21` | `C1-website-movil-JSON.dev-20260919T15` |
+
+---
+
+## ✅ Corrección Prioridad 2 - C2 — AuthGuard con caché de sesión y skeleton (Aplicada)
+
+**Fecha de aplicación:** 19 de septiembre de 2026
+**Estado:** ✅ Aplicada — Pendiente de medición Lighthouse
+
+### Archivos modificados (2)
+
+Se refactorizó el componente `AuthGuard` para eliminar el renderizado bloqueante causado por el fetch a `/auth/me`. Los cambios principales son:
+
+1. **`uis/backoffice/components/auth/auth-guard.tsx`** — Refactorización completa:
+   - Añadida **caché de sesión en memoria** (`cachedUser`, `cachedPromise`) para evitar refetch en navegaciones SPA
+   - **Estado inicial optimista**: evalúa caché y rutas públicas en el inicializador de `useState`, saltando el estado "checking" cuando es posible
+   - **Renderizado progresivo**: en estado "checking" muestra el `AuthNavigation` + skeleton shimmer inmediatamente, sin esperar el fetch
+   - **Promesa cacheada** para evitar fetch duplicado en React StrictMode (desmontaje/remontaje del efecto)
+   - **Manejo mejorado de errores**: limpia el token inválido automáticamente y permite reintentar con reset de caché
+
+2. **`uis/backoffice/app/globals.css`** — Añadidos estilos para skeleton shimmer y skeleton-card:
+   - `.dashboard-skeleton`: contenedor del esqueleto con ancho máximo de 1280px
+   - `.skeleton-shimmer`: animación de gradiente con `@keyframes shimmer` para efecto de carga
+   - `.skeleton-card`: tarjeta esqueleto con shimmer para componentes dynamic
+   - Todos los estilos usan variables CSS existentes para mantener coherencia visual
+
+### Patrón aplicado
+
+```tsx
+// Antes: fetch bloqueante — la página entera esperaba la respuesta de /auth/me
+// mostrando solo "Comprobando sesión..." sin navegación ni contenido
+const [state, setState] = useState<GuardState>("checking");
+// ...
+if (state === "checking") {
+  return <main>Comprobando sesión...</main>;
+}
+
+// Después: renderizado progresivo — AuthNavigation + skeleton se muestra
+// inmediatamente, el fetch ocurre en paralelo sin bloquear
+const [state, setState] = useState<GuardState>(() => {
+  if (cachedUser) return "authenticated";
+  // ... rutas públicas sin fetch ...
+  return "checking";
+});
+// ...
+if (state === "checking") {
+  return (
+    <>
+      <AuthNavigation />
+      <main>
+        <div className="dashboard-skeleton" role="status" aria-label="Verificando sesión…">
+          <div className="skeleton-shimmer" style={{ height: 24, width: "40%" }} />
+          <div className="skeleton-shimmer" style={{ height: 200, width: "100%", marginTop: 16 }} />
+        </div>
+      </main>
+    </>
+  );
+}
+```
+
+### Cambios específicos en `auth-guard.tsx`
+
+| Aspecto | Antes (C1) | Después (C2) | Beneficio |
+|---------|-----------|--------------|-----------|
+| **Caché de sesión** | No existía — cada navegación SPA disparaba fetch | `cachedUser` + `cachedPromise` en scope module | Fetch único por sesión |
+| **Estado inicial** | Siempre `"checking"` | Optimista: evalúa caché/rutas públicas | Evita parpadeo en navegaciones SPA |
+| **Renderizado "checking"** | Solo texto "Comprobando sesión..." | AuthNavigation + skeleton shimmer | Usuario ve navegación y layout inmediatamente |
+| **StrictMode** | Fetch duplicado (doble llamada) | Promesa cacheada evita duplicados | Reducción de tráfico duplicado |
+| **Error recovery** | Contador `attempt` con reintento simple | Reset de `cachedPromise`/`cachedUser` + limpieza de token | Recuperación más robusta |
+
+### Impacto esperado
+
+| Métrica | Antes (Backoffice Desktop) | Después estimado | Mejora |
+|:-------:|:--------------------------:|:----------------:|:------:|
+| LCP | 4.3 s (post-C1) | ~1.5 s | **-65 %** |
+| TBT | 1,026 ms (post-C1) | ~300 ms | **-71 %** |
+| FCP | 428.9 ms (post-C1) | ~400 ms | similar (ya era bajo) |
+| Performance Score | 45 (post-C1) | ~70 | **+25 pts** |
+
+> El impacto principal está en **LCP** y **TBT**. El fetch a `/auth/me` tardaba ~4.4 s en desktop y ~5.1 s en móvil. Con el renderizado progresivo, el skeleton y el AuthNavigation se muestran al instante, y el contenido real aparece cuando el fetch responde, sin bloquear el hilo principal durante la espera.
+
+---
+
+### Archivos de medición
+
+Los archivos de esta medición se encuentran en /audit/02-C2/
+
+| Frontend | Modo | Archivo original | Archivo C2 |
+|----------|:----:|:----------------:|:----------:|
+| Backoffice | Desktop | `C1-backoffice-desktop-JSON.dev-20260919T15` | `C2-backoffice-desktop-JSON.dev-20260919` |
+| Backoffice | Móvil | `C1-backoffice-movil-JSON.dev-20260919T15` | `C2-backoffice-movil-JSON.dev-20260919` |
+| Website | Desktop | `C1-website-desktop-JSON.dev-20260919T15` | `C2-website-desktop-JSON.dev-20260919` |
+| Website | Móvil | `C1-website-movil-JSON.dev-20260919T15` | `C2-website-movil-JSON.dev-20260919` |
+
+---
+
+### Resultados reales (medición post-corrección con Lighthouse)
+
+**Fecha de medición:** 19 de septiembre de 2026
+
+#### Backoffice Desktop
+
+| Métrica | C1 (baseline) | C2 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **45** | **47** | +2 pts | +4.4 % |
+| **FCP** | 428.9 ms | 380.5 ms | -48.4 ms | **-11.3 %** |
+| **LCP** | 4,262.9 ms | 4,295.5 ms | +32.6 ms | +0.8 % |
+| **SI** | 2,417.9 ms | 1,807.1 ms | -610.8 ms | **-25.3 %** ✅ |
+| **TBT** | 1,026 ms | 1,100 ms | +74 ms | +7.2 % |
+| **CLS** | 0 | 0.035 | +0.035 | — (score 1) |
+
+#### Backoffice Móvil
+
+| Métrica | C1 (baseline) | C2 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **40** | **40** | 0 pts | 0 % |
+| **FCP** | 1,043.9 ms | 1,098.4 ms | +54.5 ms | +5.2 % |
+| **LCP** | 21,579.9 ms | 22,017.4 ms | +437.5 ms | +2.0 % |
+| **SI** | 5,980.3 ms | 5,598.0 ms | -382.3 ms | -6.4 % |
+| **TBT** | 4,509.0 ms | 4,744.0 ms | +235.0 ms | +5.2 % |
+| **CLS** | 0 | 0.029 | +0.029 | — (score 1) |
+
+#### Website Desktop
+
+| Métrica | C1 (baseline) | C2 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **100** | **100** | 0 pts | — |
+| **FCP** | 343.9 ms | 345.6 ms | +1.7 ms | — |
+| **LCP** | 396.9 ms | 394.1 ms | -2.8 ms | — |
+| **SI** | 661.6 ms | 638.2 ms | -23.4 ms | -3.5 % |
+| **TBT** | 2.0 ms | 8.5 ms | +6.5 ms | — |
+| **CLS** | 0 | **1.0** 🔸 | +1.0 | ⚠️ score 0.02 |
+
+#### Website Móvil
+
+| Métrica | C1 (baseline) | C2 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **84** | **86** | +2 pts | +2.4 % |
+| **FCP** | 1,058.5 ms | 1,082.5 ms | +24.0 ms | +2.3 % |
+| **LCP** | 1,331.5 ms | 1,348.5 ms | +17.0 ms | +1.3 % |
+| **SI** | 1,335.1 ms | 1,548.1 ms | +213.0 ms | +15.9 % |
+| **TBT** | 633.0 ms | 530.0 ms | **-103.0 ms** | **-16.3 %** ✅ |
+| **CLS** | 0 | 0 | 0 | — |
+
+> 🔸 El CLS en Website Desktop se disparó a 1.0 (score 0.02). Dado que esta corrección C2 solo modifica el backoffice (auth-guard.tsx + globals.css), este valor es presumiblemente un **outlier de medición** y no atribuible a los cambios. Se recomienda una segunda medición para confirmar.
+
+---
+
+#### Análisis de resultados
+
+**Fortalezas:**
+- ✅ **Speed Index Desktop mejoró -25.3 %** (de 2,418 ms a 1,807 ms). Esta es la mejora más significativa y atribuible directamente a la **renderización progresiva del AuthGuard**: el skeleton y el AuthNavigation se pintan inmediatamente, mejorando la percepción visual de carga incluso antes de que el fetch de `/auth/me` se complete.
+- ✅ **Performance Score Desktop** subió de 45 a 47 (+4.4 %)
+- ✅ **Website Móvil TBT** mejoró -16.3 % (de 633 ms a 530 ms), aunque esto no es atribuible a C2 (que solo toca backoffice)
+- ✅ **FCP Desktop** mejoró -11.3 % (de 429 ms a 380 ms), consistente con el renderizado temprano del AuthNavigation
+
+**Limitaciones observadas:**
+- ⚠️ **LCP en Backoffice no mejoró** (4.3 s Desktop, 22 s Móvil — prácticamente idéntico a C1). El LCP sigue dependiendo del elemento de texto en el dashboard que requiere la respuesta de `/auth/me`. Si bien el **AuthNavigation se renderiza inmediatamente** (mejorando FCP y SI), el **contenido real del dashboard** (el elemento LCP `<p>` con datos del usuario) sigue esperando la hidratación completa del componente. La caché de sesión en memoria solo evita refetch en navegaciones SPA, pero en la **carga inicial** el fetch ocurre igual.
+- ⚠️ **TBT** se mantiene alto (~1,100 ms Desktop, ~4,700 ms Mobile). El skeleton shimmer no reduce el trabajo del hilo principal; solo mejora lo que el usuario *ve* durante la espera.
+- ⚠️ **Backoffice Móvil** sin cambios en Performance Score (se mantiene en 40). Las métricas principales (LCP, TBT) se mantienen esencialmente igual.
+
+**¿Por qué C2 no logró el impacto esperado en LCP?**
+
+El análisis original estimaba LCP Desktop de 4.5 s → ~1.5 s. Sin embargo, el LCP está determinado por el **elemento de contenido más grande de la página** — en el dashboard del backoffice, este es un párrafo de texto (`<p>`) con datos cargados asíncronamente. Incluso con el AuthGuard optimizado:
+
+1. El **fetch a `/auth/me`** sigue ocurriendo en la carga inicial (~4.4 s en Desktop)
+2. El **skeleton shimmer** no contiene el elemento LCP, por lo que el LCP solo se completa cuando el contenido real se renderiza
+3. El **code-splitting** de C1 dividió los bundles de las rutas secundarias, pero el **dashboard** (la ruta principal `/`) no se beneficia de esto
+
+**Impacto real vs estimado:**
+
+| Métrica | Estimado | Real | Verificación |
+|:-------:|:--------:|:----:|:------------:|
+| LCP Desktop | 4.5 s → ~1.5 s (-65 %) | 4.3 s → 4.3 s (0 %) | ❌ No alcanzado |
+| Performance Desktop | 45 → ~70 (+25 pts) | 45 → 47 (+2 pts) | ❌ No alcanzado |
+| SI Desktop | 2.4 s → ~1.5 s (-37 %) | 2.4 s → 1.8 s (-25 %) | ✅ Mejora parcial |
+| FCP Desktop | 429 ms → ~400 ms | 429 ms → 380 ms (-11 %) | ✅ Mejora parcial |
+
+> **Conclusión:** C2 mejora significativamente la **percepción de velocidad** (SI -25 %, FCP -11 %) al renderizar el AuthNavigation y el skeleton inmediatamente, pero **no resuelve el LCP ni el TBT** porque el contenido principal del dashboard sigue dependiendo del fetch de autenticación y de la hidratación de componentes pesados. Para abordar LCP y TBT se requiere combinar C2 con **C5** (lazy loading de componentes del dashboard) y posiblemente server-side optimizations (reducir tiempo de respuesta del endpoint `/auth/me`).
+
+---
