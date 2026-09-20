@@ -298,6 +298,45 @@
   flex-wrap: wrap;
 }
 
+/* === Tabs para lazy loading en la página de órdenes === */
+.tabsNav {
+  display: flex;
+  gap: 0.25rem;
+  background: #ffffff;
+  border: 1px solid #d3e4f1;
+  border-radius: 1rem;
+  padding: 0.35rem;
+}
+
+.tabActive {
+  flex: 1;
+  border: none;
+  border-radius: 0.7rem;
+  background: #1f4f73;
+  color: #ffffff;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  font: 600 0.88rem var(--font-space-grotesk), sans-serif;
+  transition: background 0.15s;
+}
+
+.tabInactive {
+  flex: 1;
+  border: none;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: #4b6b86;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  font: 500 0.88rem var(--font-space-grotesk), sans-serif;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tabInactive:hover {
+  background: #edf3f7;
+  color: #1f4f73;
+}
+
 /* Stock disponible en formulario de salida (lectura). */
 .stockDisplay {
   font-weight: 700;
