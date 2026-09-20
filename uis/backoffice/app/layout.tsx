@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import Script from "next/script";
 import { AuthGuard } from "../components/auth/auth-guard";
 import "./globals.css";
 
@@ -26,7 +27,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
     >
-      <body><AuthGuard>{children}</AuthGuard></body>
+      <head>
+        <link rel="dns-prefetch" href="https://gc.kes.v2.scr.kaspersky-labs.com" />
+      </head>
+      <body>
+        <AuthGuard>{children}</AuthGuard>
+        <Script
+          src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js"
+          strategy="lazyOnload"
+        />
+      </body>
     </html>
   );
 }
