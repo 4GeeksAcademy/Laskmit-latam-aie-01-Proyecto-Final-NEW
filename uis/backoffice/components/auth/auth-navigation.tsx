@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearAccessToken } from "../../lib/auth";
+import { clearCachedSession } from "../../lib/session-cache";
 
 export function AuthNavigation() {
   const router = useRouter();
 
   function logout(): void {
     clearAccessToken();
+    clearCachedSession();
     router.replace("/login");
   }
 

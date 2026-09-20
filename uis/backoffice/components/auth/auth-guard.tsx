@@ -6,6 +6,7 @@ import { apiRequest, getErrorMessage } from "../../lib/api-client";
 import { getAccessToken, setAccessToken } from "../../lib/auth";
 import type { CurrentUser } from "../../lib/auth-types";
 import { AuthNavigation } from "./auth-navigation";
+import { getCachedSession, setCachedSession, clearCachedSession } from "../../lib/session-cache";
 
 const AUTH_ROUTES = new Set(["/login", "/register"]);
 const PASSWORD_RECOVERY_ROUTES = new Set(["/forgot-password", "/reset-password"]);
@@ -13,6 +14,7 @@ const PASSWORD_RECOVERY_ROUTES = new Set(["/forgot-password", "/reset-password"]
 type GuardState = "checking" | "authenticated" | "public" | "error";
 
 // Caché de sesión en memoria para evitar refetch en navegaciones SPA
+// También se persiste en localStorage para sobrevivir a recargas de página
 let cachedUser: CurrentUser | null = null;
 let cachedPromise: Promise<CurrentUser> | null = null;
 
@@ -20,7 +22,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [state, setState] = useState<GuardState>(() => {
-    // Optimización: si ya hay caché, usamos el estado directamente
+    // Solo usar caché en memoria (seguro en SSR porque siempre es null al hidratar)
     if (cachedUser) return "authenticated";
     const isAuthRoute = AUTH_ROUTES.has(pathname);
     const isPasswordRecoveryRoute = PASSWORD_RECOVERY_ROUTES.has(pathname);
@@ -48,8 +50,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Si ya tenemos el usuario en caché, no hacemos fetch
-    if (cachedUser) {
+    // Intentar recuperar sesión de localStorage (solo cliente, después de hidratación)
+    if (!cachedUser) {
+      const stored = getCachedSession();
+      if (stored) {
+        cachedUser = stored;
+        setState("authenticated");
+        // La validación continúa: el fetch `/auth/me` correrá en segundo plano
+        // para confirmar que la sesión cacheada sigue siendo válida.
+      }
+    }
+
+    // Si ya tenemos el usuario en caché, saltamos el fetch (solo si ya se había validado antes)
+    if (cachedUser && cachedPromise) {
       setState("authenticated");
       return;
     }
@@ -58,6 +71,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!cachedPromise) {
       cachedPromise = apiRequest<CurrentUser>("/auth/me").then((user) => {
         cachedUser = user;
+        setCachedSession(user); // persistir en localStorage
         return user;
       });
     }
@@ -76,7 +90,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         setError(getErrorMessage(err));
         setState("error");
       }
-      // Limpiar token inválido
+      // Limpiar caché y token inválido
+      clearCachedSession();
+      cachedUser = null;
+      cachedPromise = null;
       if (getAccessToken()) {
         import("../../lib/auth").then(({ clearAccessToken }) => clearAccessToken());
       }
