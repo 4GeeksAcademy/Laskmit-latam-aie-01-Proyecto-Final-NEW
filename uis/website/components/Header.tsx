@@ -10,7 +10,7 @@ export function Header({ items }: HeaderProps) {
     <header className={styles.header}>
       <div className={styles.container}>
         <a className={styles.brand} href="#inicio" aria-label="Ir al inicio de Nexova">
-          <span className={styles.brandMark}>N</span>
+          <span className={styles.brandMark} aria-hidden="true">N</span>
           <span className={styles.brandText}>Nexova</span>
         </a>
         <nav aria-label="Navegacion principal">

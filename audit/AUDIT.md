@@ -3541,3 +3541,65 @@ C7 modificó exclusivamente el **backoffice** (no el website). Las observaciones
 | `audit/08-C7/C7-website-movil-JSON.dev-20260920` | Website Móvil | 2026-09-20 |
 
 ---
+
+## ✅ Corrección Prioridad 9 - C9 — Accesibilidad label in name (Aplicada)
+
+**Fecha de aplicación:** 20 de septiembre de 2026
+**Estado:** ✅ Aplicada — Pendiente de medición Lighthouse
+
+### Diagnóstico
+
+El diagnóstico original (PASO 03, problema #12) identificó un error de accesibilidad en el header del website: el elemento `<a>` con la marca "N" tenía como texto visible únicamente la letra "N" pero su `aria-label` era `"Ir al inicio de Nexova"`. Esto viola el **WCAG 2.1 Success Criterion 2.5.3 (Label in Name)**, que exige que el nombre accesible de un elemento incluya el texto visible.
+
+En el HTML servido, el lector de pantalla leía "N" (texto visible) pero el nombre accesible era "Ir al inicio de Nexova" — al no coincidir, los usuarios de tecnologías de asistencia recibían información contradictoria.
+
+| Problema | Impacto |
+|----------|---------|
+| `<span>N</span>` visible pero `aria-label` no contiene "N" | Violación WCAG 2.5.3 — confusión en lectores de pantalla |
+| Accesibilidad con score 100 pero con error semántico | La puntuación automática no detecta este tipo de error |
+
+### Archivo modificado (1)
+
+| Archivo | Cambio | Beneficio |
+|---------|--------|-----------|
+| `uis/website/components/Header.tsx` | Añadido `aria-hidden="true"` al `<span className="brandMark">N</span>` | El texto "N" se oculta del árbol de accesibilidad; el nombre accesible del `<a>` es únicamente `"Ir al inicio de Nexova"`, sin conflicto |
+
+### Detalle del cambio
+
+#### `uis/website/components/Header.tsx`
+
+```tsx
+// Antes
+<a className={styles.brand} href="#inicio" aria-label="Ir al inicio de Nexova">
+  <span className={styles.brandMark}>N</span>
+  <span className={styles.brandText}>Nexova</span>
+</a>
+
+// Después
+<a className={styles.brand} href="#inicio" aria-label="Ir al inicio de Nexova">
+  <span className={styles.brandMark} aria-hidden="true">N</span>
+  <span className={styles.brandText}>Nexova</span>
+</a>
+```
+
+El cambio es mínimo: añadir `aria-hidden="true"` al `<span>` que contiene la marca "N". Esto elimina el texto visible "N" del árbol de accesibilidad, con lo que el nombre accesible del `<a>` es exclusivamente el `aria-label`, sin conflicto con texto visible no coincidente.
+
+**Visualmente no cambia nada** — el `aria-hidden="true"` solo afecta a tecnologías de asistencia. El estilo y layout del header permanecen idénticos.
+
+### Verificación de compilación
+
+- `next build` → **✓ Compiled successfully in 8.9s**
+- TypeScript → **Finished in 3.4s, sin errores**
+- `ui/website/components/Header.tsx` → **Sin errores**
+- Docker compose → servicios en ejecución con hot reload (bind mount)
+
+### Impacto esperado
+
+| Métrica | Antes | Después | Diferencia |
+|:-------:|:-----:|:-------:|:----------:|
+| **Accesibilidad** | 100 🟢 (con error semántico) | 100 🟢 (sin error) | **Cumplimiento WCAG 2.5.3** |
+| **Label in Name** | ❌ Falla (texto "N" ≠ "Ir al inicio de Nexova") | ✅ Pasa (texto oculto con aria-hidden) | **Corrección de accesibilidad** |
+| Rendimiento | Sin cambio | Sin cambio | — (C9 no afecta métricas de performance) |
+
+> **Nota:** C9 no tiene impacto en las métricas de performance (FCP, LCP, TBT, etc.). Es una correción puramente de accesibilidad que garantiza el cumplimiento del criterio WCAG 2.5.3 (Label in Name). Lighthouse puede o no detectar esta mejora dependiendo de la versión (las reglas a11y de Label in Name no siempre están activas en todos los modos de auditoría). La corrección es correcta independientemente de si Lighthouse la reporta.
+
