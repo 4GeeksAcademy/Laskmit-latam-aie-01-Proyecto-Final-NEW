@@ -43,7 +43,10 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-engine = create_engine(DATABASE_URL, echo=False)
+if DATABASE_URL:
+    engine = create_engine(DATABASE_URL, echo=False)
+else:
+    engine = None
 
 
 def get_supabase_db() -> Session:

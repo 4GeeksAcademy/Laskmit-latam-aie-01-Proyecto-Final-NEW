@@ -5,6 +5,7 @@ import { FormEvent, Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, apiRequest, getErrorMessage } from "../../lib/api-client";
 import { clearAccessToken, setAccessToken } from "../../lib/auth";
+import { clearCachedSession } from "../../lib/session-cache";
 import type { AuthToken } from "../../lib/auth-types";
 
 function LoginForm() {
@@ -36,6 +37,7 @@ function LoginForm() {
         body: { email, password },
       });
       setAccessToken(token.access_token);
+      clearCachedSession(); // limpiar caché antigua antes de navegar
       router.replace("/");
     } catch (requestError) {
       clearAccessToken();

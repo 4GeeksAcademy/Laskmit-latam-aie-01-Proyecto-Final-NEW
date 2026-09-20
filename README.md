@@ -99,9 +99,14 @@ Con **un solo comando** desde la raíz del repositorio levantas los tres servici
    # Seed de admin + proveedores
    docker compose run --rm backend python seed.py
 
-   # Seed de inventario (solo si DATABASE_URL está configurada)
+   # Seed de inventario (solo si DATABASE_URL está configurada en .env)
    docker compose run --rm backend python seed_inventory.py
+
+   # Seed de incidencias (carga 96 registros históricos desde data/raw/incidents-nexova.csv)
+   docker compose run --rm backend python /repo/scripts/seed_incidents.py
    ```
+
+   > Los seeders son **idempotentes**: si ejecutas un seed dos veces, no duplicará los registros.
 
 ### ▶️ Cada vez que quieras usar la plataforma
 
@@ -217,7 +222,8 @@ Todas requieren iniciar sesión excepto `/login` y `/register`.
 
 ## Seeders (datos iniciales)
 
-Ejecútalos solo la primera vez después de clonar el repositorio, usando Docker Compose:
+Ejecútalos solo la primera vez después de clonar el repositorio, usando Docker Compose.  
+Todos los seeders son **idempotentes** (no duplican registros si se ejecutan varias veces).
 
 ```bash
 # Seed de admin + proveedores
@@ -225,7 +231,18 @@ docker compose run --rm backend python seed.py
 
 # Seed de inventario (solo si DATABASE_URL está configurada en .env)
 docker compose run --rm backend python seed_inventory.py
+
+# Seed de incidencias (carga 96 registros históricos del gestor centralizado)
+docker compose run --rm backend python /repo/scripts/seed_incidents.py
 ```
+
+### Orden recomendado
+
+1. `seed.py` — Crea el usuario administrador y carga los proveedores de ejemplo
+2. `seed_incidents.py` — Carga el histórico de incidencias desde `data/raw/incidents-nexova.csv`
+3. `seed_inventory.py` — Carga productos de inventario (**solo si DATABASE_URL está configurada**)
+
+> ⚠️ El seed de inventario requiere conexión a Supabase (PostgreSQL). Los otros dos funcionan con TinyDB (local, sin dependencias externas).
 
 ---
 

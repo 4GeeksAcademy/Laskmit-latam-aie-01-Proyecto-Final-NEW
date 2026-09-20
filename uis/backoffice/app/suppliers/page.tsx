@@ -1,5 +1,19 @@
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import styles from "./suppliers.module.css";
-import { SuppliersPageClient } from "./suppliers-page-client";
+
+const SuppliersPageClient = dynamic(
+  () => import("./suppliers-page-client").then((mod) => ({ default: mod.SuppliersPageClient })),
+  {
+    loading: () => (
+      <div role="status" aria-label="Cargando proveedores…"
+        style={{ padding: "1.5rem", background: "#fff", borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+        <div style={{ height: 24, width: "40%", marginBottom: 16, background: "#e0e0e0", borderRadius: 4 }} />
+        <div style={{ height: 200, width: "100%", background: "#e0e0e0", borderRadius: 4 }} />
+      </div>
+    ),
+  }
+);
 
 export default function SuppliersPage() {
   // Página contenedora: copy principal + componente cliente con toda la interacción.
@@ -15,7 +29,14 @@ export default function SuppliersPage() {
           </p>
         </header>
 
-        <SuppliersPageClient />
+        <Suspense fallback={
+          <div role="status" aria-label="Cargando…"
+            style={{ padding: "1.5rem", background: "#fff", borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+            <div style={{ height: 200, width: "100%", background: "#e0e0e0", borderRadius: 4 }} />
+          </div>
+        }>
+          <SuppliersPageClient />
+        </Suspense>
       </div>
     </div>
   );
