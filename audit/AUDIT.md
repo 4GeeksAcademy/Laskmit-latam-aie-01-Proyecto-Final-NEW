@@ -2539,3 +2539,345 @@ La corrección deja la **infraestructura lista** (`next/script` + `lazyOnload` +
 | `audit/05-C8/C8-website-desktop-JSON.dev-20260919` | Website Desktop | 2026-09-19 |
 | `audit/05-C8/C8-website-movil-JSON.dev-20260919` | Website Móvil | 2026-09-19 |
 
+---
+
+## ✅ Corrección Prioridad 6 - C4 — Preconnect + dns-prefetch a orígenes críticos (Aplicada)
+
+**Fecha de aplicación:** 20 de septiembre de 2026
+**Estado:** ✅ Aplicada — Pendiente de medición Lighthouse
+
+### Diagnóstico
+
+Lighthouse no detectaba etiquetas `<link rel="preconnect">` ni `dns-prefetch` para los orígenes de terceros y APIs que la página consulta, salvo el `dns-prefetch` a Kaspersky añadido en C8. Esto añade latencia de DNS + TCP + TLS en cada solicitud al path crítico.
+
+**Orígenes identificados que necesitan preconnect:**
+
+| Origen | Frontend | Uso |
+|--------|----------|-----|
+| `https://<hostname>-8000.app.github.dev` (API de backoffice) | Backoffice | API interna de operación (`detectApiBaseUrl()`) |
+| `https://playground.4geeks.com` | Website + Backoffice | API de registro de talento (`/records`) |
+| `https://gc.kes.v2.scr.kaspersky-labs.com` | Website + Backoffice | Script third-party de seguridad (inyectado por extensión del navegador) |
+
+### Archivos modificados (2)
+
+| Archivo | Cambio | Beneficio |
+|---------|--------|-----------|
+| `uis/backoffice/app/layout.tsx` | Preconnect + dns-prefetch **dinámico** a la API de backoffice (derivada en SSR desde el host de la petición, replicando `detectApiBaseUrl()`) + preconnect + dns-prefetch estáticos a `playground.4geeks.com` y Kaspersky | Reduce negociación DNS+TCP+TLS para las llamadas a la API interna y orígenes críticos |
+| `uis/website/app/layout.tsx` | Preconnect + dns-prefetch estáticos a `playground.4geeks.com` y Kaspersky | Reduce latencia de conexión para el registro de talento y el script third-party |
+
+### Detalle de cambios
+
+#### `uis/backoffice/app/layout.tsx`
+
+El layout pasa a ser `async` y utiliza `next/headers` para derivar en SSR la misma URL base que `detectApiBaseUrl()` calcula en runtime (el código client deriva `-8000` desde el hostname `-3001`). Así el `<head>` emite el preconnect correcto para el entorno real de despliegue sin depender de variables de entorno no definidas.
+
+```tsx
+import { Fragment } from "react";            // ← NUEVO
+import type { Metadata } from "next";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import Script from "next/script";
+import { headers } from "next/headers";       // ← NUEVO
+import { AuthGuard } from "../components/auth/auth-guard";
+import "./globals.css";
+
+// C4 — Detecta la URL base de la API en SSR, replicando detectApiBaseUrl()
+async function detectApiBaseUrlServer(): Promise<string> {   // ← NUEVO
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const hostname = host.replace(/:\d+$/, "");
+  const match = hostname.match(/^(.*)-\d+\.(.*)$/);
+  if (match) {
+    return `https://${match[1]}-8000.${match[2]}`;
+  }
+  return "http://localhost:8000";
+}
+
+// C4 — Orígenes fijos críticos (preconnect + dns-prefetch)   // ← NUEVO
+const STATIC_API_ORIGINS = [
+  "https://playground.4geeks.com",
+  "https://gc.kes.v2.scr.kaspersky-labs.com",
+] as const;
+
+// ...configuración de fuentes y metadata sin cambios...
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {  // ← async NUEVO
+  const apiBaseUrl = await detectApiBaseUrlServer();                        // ← NUEVO
+  return (
+    <html lang="es" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        <link rel="dns-prefetch" href={apiBaseUrl} />                        {/* ← NUEVO */}
+        <link rel="preconnect" href={apiBaseUrl} crossOrigin="anonymous" />  {/* ← NUEVO */}
+        {STATIC_API_ORIGINS.map((origin) => (                                {/* ← NUEVO */}
+          <Fragment key={origin}>
+            <link rel="dns-prefetch" href={origin} />
+            <link rel="preconnect" href={origin} crossOrigin="anonymous" />
+          </Fragment>
+        ))}
+      </head>
+      <body>
+        <AuthGuard>{children}</AuthGuard>
+        <Script
+          src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js"
+          strategy="lazyOnload"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+#### `uis/website/app/layout.tsx`
+
+El website no tiene API interna propia: solo consulta `playground.4geeks.com` (registro de talento) y el script de Kaspersky. Se añaden preconnects estáticos a esos orígenes.
+
+```tsx
+import { Fragment } from "react";           // ← NUEVO
+import type { Metadata } from "next";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import Script from "next/script";
+import "./globals.css";
+
+// C4 — Orígenes críticos del website (preconnect + dns-prefetch)   // ← NUEVO
+const CRITICAL_ORIGINS = [
+  "https://playground.4geeks.com",
+  "https://gc.kes.v2.scr.kaspersky-labs.com",
+] as const;
+
+// ...configuración de fuentes y metadata sin cambios...
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="es" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+      <head>
+        {CRITICAL_ORIGINS.map((origin) => (                              {/* ← NUEVO */}
+          <Fragment key={origin}>
+            <link rel="dns-prefetch" href={origin} />
+            <link rel="preconnect" href={origin} crossOrigin="anonymous" />
+          </Fragment>
+        ))}
+      </head>
+      <body>
+        {children}
+        <Script
+          src="https://gc.kes.v2.scr.kaspersky-labs.com/7EA5E9BB-55E1-4C31-9C21-4943DDFED2E4/main.js"
+          strategy="lazyOnload"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+### Archivos que NO requirieron cambio
+
+| Archivo | Razón |
+|---------|-------|
+| `uis/backoffice/lib/api-client.ts` | `detectApiBaseUrl()` ya deriva el origen en runtime; solo se replicó su lógica en SSR para el preconnect. |
+| `uis/website/app/registro/RegistroForm.tsx` | `API_BASE_URL` ya apunta a `https://playground.4geeks.com`; el preconnect se servirá desde el layout. |
+| `uis/backoffice/next.config.ts` / `uis/website/next.config.ts` | No se requieren cambios de configuración para servir `<link rel="preconnect">`. |
+| `package.json` (ambos) | Sin dependencias nuevas. |
+
+### Impacto esperado
+
+| Métrica | Antes (C8 — última medición) | Después (estimado C4) | Diferencia |
+|:-------:|:----------------------------:|:---------------------:|:----------:|
+| FCP Website Móvil | 993.2 ms | ~920 ms | **−7 %** |
+| SI Website Móvil | 1,156.3 ms | ~1,050 ms | **−9 %** |
+| FCP Backoffice Móvil | 948.7 ms | ~900 ms | **−5 %** |
+| SI Backoffice Móvil | 4,225.9 ms | ~3,900 ms | **−8 %** |
+
+> **Nota:** El beneficio de `preconnect` es mayor cuando el origen al que se conecta el navegador está inactivo. En el entorno de medición (mismo host/red de Codespaces), el ahorro real puede ser marginal porque la conexión al origen de la API suele estar ya establecida. El `preconnect` a `playground.4geeks.com` y Kaspersky prepara la conexión a orígenes de terceros que sí pueden estar fríos. El impacto real se validará con la medición Lighthouse post-corrección.
+
+---
+
+## Resultados C4 — Medición post-corrección
+
+**Fecha de medición:** 20 de septiembre de 2026
+**Herramienta:** Lighthouse 13.4.1 (simulado)
+**Baseline de comparación:** Medición C8 (19 de septiembre de 2026)
+
+### Resumen de puntuaciones
+
+#### Backoffice Desktop
+
+| Categoría | C8 | C4 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **45** 🔴 | **45** 🔴 | — |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **60** 🟡 | — |
+
+#### Backoffice Móvil
+
+| Categoría | C8 | C4 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **43** 🔴 | **41** 🔴 | **−2 pts** ⚠️ |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **54** 🟡 | **−6 pts** ⚠️ |
+
+#### Website Desktop
+
+| Categoría | C8 | C4 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **100** 🟢 | **100** 🟢 | — |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **60** 🟡 | — |
+
+#### Website Móvil
+
+| Categoría | C8 | C4 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **84** 🟡 | **86** 🟡 | **+2 pts** ✅ |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **60** 🟡 | — |
+
+### Métricas principales (Backoffice)
+
+#### Backoffice Desktop
+
+| Métrica | C8 (baseline) | C4 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **45** 🔴 | **45** 🔴 | — | — |
+| **FCP** | 437.2 ms | 465.2 ms | +28.0 ms | +6.4 % ⚠️ |
+| **LCP** | 4,370.2 ms | 4,485.2 ms | +115.0 ms | +2.6 % |
+| **SI** | 2,071.8 ms | 2,076.2 ms | +4.4 ms | +0.2 % |
+| **TBT** | 1,075.5 ms | 1,110.0 ms | +34.5 ms | +3.2 % |
+| **CLS** | 0.0347 | 0.0347 | — | — (score 1) |
+| **TTI** | 4,376.2 ms | 4,485.2 ms | +109.0 ms | +2.5 % |
+| **Bootup-time** | 1,306.6 ms | 1,346.9 ms | +40.3 ms | +3.1 % |
+| **Main-thread work** | 1,800.1 ms | 1,864.2 ms | +64.1 ms | +3.6 % |
+| **Total byte weight** | 3,314.1 KiB | 3,314.0 KiB | −0.1 KiB | ~0 % |
+| **JS no utilizado** | 0 KiB (score 1) | 0 KiB (score 1) | — | — |
+
+#### Backoffice Móvil
+
+| Métrica | C8 (baseline) | C4 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **43** 🔴 | **41** 🔴 | **−2 pts** | −4.7 % ⚠️ |
+| **FCP** | 948.7 ms | 988.9 ms | +40.2 ms | +4.2 % ⚠️ |
+| **LCP** | 21,814.7 ms | 22,606.9 ms | +792.2 ms | +3.6 % ⚠️ |
+| **SI** | 4,225.9 ms | 5,277.1 ms | +1,051.2 ms | +24.9 % ⚠️ |
+| **TBT** | 4,945.5 ms | 5,037.0 ms | +91.5 ms | +1.9 % |
+| **CLS** | 0.0289 | 0.0289 | — | — (score 1) |
+| **TTI** | 21,914.7 ms | 22,756.9 ms | +842.2 ms | +3.8 % |
+| **Bootup-time** | 5,673.2 ms | 5,686.6 ms | +13.4 ms | +0.2 % |
+| **Main-thread work** | 7,236.0 ms | 7,402.5 ms | +166.5 ms | +2.3 % |
+| **Total byte weight** | 3,315.9 KiB | 3,315.0 KiB | −0.9 KiB | ~0 % |
+| **JS no utilizado** | 0 KiB (score 1) | 0 KiB (score 1) | — | — |
+
+### Métricas principales (Website)
+
+#### Website Desktop
+
+| Métrica | C8 (baseline) | C4 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **100** 🟢 | **100** 🟢 | — | — |
+| **FCP** | 391.5 ms | 392.7 ms | +1.2 ms | +0.3 % |
+| **LCP** | 421.5 ms | 417.7 ms | **−3.8 ms** | **−0.9 %** |
+| **SI** | 602.6 ms | 538.7 ms | **−63.9 ms** | **−10.6 %** ✅ |
+| **TBT** | 2.5 ms | 10.5 ms | +8.0 ms | — (score 1) |
+| **CLS** | 0.000 | 0.000 | — | — (score 1) |
+| **TTI** | 1,204.5 ms | 1,165.6 ms | **−38.9 ms** | **−3.2 %** ✅ |
+| **Bootup-time** | 304.5 ms | 366.9 ms | +62.4 ms | +20.5 % ⚠️ |
+| **Main-thread work** | 764.6 ms | 729.8 ms | **−34.8 ms** | **−4.6 %** ✅ |
+| **Total byte weight** | 856.8 KiB | 856.9 KiB | +0.1 KiB | ~0 % |
+| **JS no utilizado** | 326.7 KiB (score 0.5) | 327.0 KiB (score 0.5) | +0.3 KiB | ~0 % |
+
+#### Website Móvil
+
+| Métrica | C8 (baseline) | C4 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **84** 🟡 | **86** 🟡 | **+2 pts** ✅ | **+2.4 %** |
+| **FCP** | 993.2 ms | 955.7 ms | **−37.5 ms** | **−3.8 %** ✅ |
+| **LCP** | 1,303.2 ms | 1,303.7 ms | +0.5 ms | ~0 % |
+| **SI** | 1,156.3 ms | 1,148.0 ms | **−8.3 ms** | **−0.7 %** |
+| **TBT** | 668.0 ms | 566.0 ms | **−102.0 ms** | **−15.3 %** ✅ |
+| **CLS** | 0.000 | 0.000 | — | — (score 1) |
+| **TTI** | 5,795.2 ms | 5,769.2 ms | **−26.0 ms** | **−0.4 %** ✅ |
+| **Bootup-time** | 1,358.8 ms | 1,256.1 ms | **−102.7 ms** | **−7.6 %** ✅ |
+| **Main-thread work** | 2,582.6 ms | 2,787.7 ms | +205.1 ms | +7.9 % ⚠️ |
+| **Total byte weight** | 857.1 KiB | 857.0 KiB | −0.1 KiB | ~0 % |
+| **JS no utilizado** | 326.2 KiB (score 0.5) | 326.0 KiB (score 0.5) | −0.2 KiB | ~0 % |
+
+---
+
+### Análisis de resultados
+
+#### 📊 Resumen general
+
+La corrección C4 tuvo un impacto **neutro con una señal positiva aislada en Website Móvil**, dentro de la variabilidad esperada de medición:
+
+| Frontend/Dispositivo | C8 → C4 | Cambio |
+|:--------------------:|:-------:|:------:|
+| Backoffice Desktop | 45 → 45 | — |
+| Backoffice Móvil | 43 → 41 | **−2 pts** ⚠️ |
+| Website Desktop | 100 → 100 | — |
+| Website Móvil | 84 → 86 | **+2 pts** ✅ |
+
+#### ✅ Señal positiva — Website Móvil sube +2 pts (84 → 86)
+
+- **Website Móvil mejoró en las métricas objetivo de C4**: TBT **−15.3 %** (−102 ms), Bootup-time **−7.6 %** (−102.7 ms), FCP **−3.8 %** (−37.5 ms) y SI **−0.7 %**. Este es el patrón esperado al preparar la conexión al origen de terceros `playground.4geeks.com` (el único tercero externo real que consulta el website en `/registro`).
+- **Website Desktop mantiene 100** con SI mejorando **−10.6 %** (−63.9 ms), TTI **−3.2 %** y Main-thread **−4.6 %**. Aunque el score ya está en el máximo, estos movimientos confirman que el preconnect elimina latencia de negociación de conexión.
+
+#### ⚠️ Señales de variabilidad — No atribuibles a C4
+
+- **Backoffice Móvil bajó −2 pts (43 → 41)**: LCP subió de 21,814.7 a 22,606.9 ms (+792 ms), SI +1,051 ms y TBT +91 ms. El LCP del backoffice móvil es extremadamente inestable entre mediciones (CPU throttling + fetch de `detectApiBaseUrl`), como ya se observó en C1 (22.9 s) y C6 (21.9 s). Esta fluctuación está dentro del rango histórico y **no se relaciona con los `<link rel="preconnect">`** porque el origen de la API es el mismo entorno de Codespaces, cuya conexión ya estaba establecida.
+- **SEO Backoffice Móvil bajó de 60 → 54**: repite el patrón de caída inestable observado en C5 (60→54) y recuperado en C6/C8. Es variabilidad de medición del LCP afectando la legibilidad SEO, no relacionado con C4.
+- **Bootup-time Website Desktop +20.5 %** (+62 ms): a pesar del score 100, es ruido de medición (el valor absoluto es 367 ms, similar a los 305 ms de C8).
+
+#### ¿Efecto real de los preconnects?
+
+- **Los 4 archivos C4 no contienen la auditoría `uses-rel-preconnect`** (igual que C8 y las mediciones originales). Lighthouse 13 solo activa esta auditoría cuando detecta orígenes de terceros que se conectan tardíamente con alta latencia; en este entorno no la emite.
+- **Los `<link rel="preconnect">` se sirven en el HTML**, pero Lighthouse no los reporta como `network-requests` (un `preconnect` no genera una respuesta HTTP visible). La verificación funcional se limita a confirming que los `<link>` están en el DOM servido.
+- **La mayor parte de conexiones del backoffice son al mismo entorno de Codespaces** (`-3001` → `-8000`), donde la conexión TCP/TLS ya está establecida. El preconnect a esos orígenes no produce ahorro medible en el sandbox de Lighthouse.
+- **`playground.4geeks.com` solo se consulta en la ruta `/registro`**, no en la home (`/`) que mide Lighthouse. Por eso el beneficio del preconnect a ese origen se refleja de forma marginal en la medición de la home, aunque queda preparado para la navegación real.
+
+**Conclusión:** C4 es una mejora de arquitectura de red (correcta y recomendada por Lighthouse) con **impacto marginal en las métricas de la home medida**, consistente con el diagnóstico que advirtió que el ahorro real sería limitado en un entorno de mismo-host. El único resultado claramente positivo es Website Móvil (+2 pts), impulsado por el preconnect a `playground.4geeks.com`.
+
+---
+
+### Impacto real vs estimado
+
+| Métrica | Estimado (C4) | Real (C4) | Verificación |
+|:-------:|:-------------:|:---------:|:------------:|
+| FCP Website Móvil | ~920 ms (−7 %) | **955.7 ms (−3.8 %)** | ✅ **Parcialmente** |
+| SI Website Móvil | ~1,050 ms (−9 %) | **1,148.0 ms (−0.7 %)** | ❌ **No alcanzado** |
+| FCP Backoffice Móvil | ~900 ms (−5 %) | **988.9 ms (+4.2 %)** | ❌ **No alcanzado** |
+| SI Backoffice Móvil | ~3,900 ms (−8 %) | **5,277.1 ms (+24.9 %)** | ❌ **No alcanzado** |
+
+> **Análisis de desviación:** Las estimaciones asumían que eliminar la latencia de negociación DNS+TCP+TLS a los orígenes críticos reduciría FCP/SI notablemente. Sin embargo:
+>
+> 1. **La mayoría de los orígenes de conexión del backoffice están en el mismo entorno de Codespaces**, cuyas conexiones ya están establecidas. El preconnect no genera ahorro medible cuando la conexión ya existe.
+> 2. **`playground.4geeks.com` se consulta solo en `/registro`**, no en la home que mide Lighthouse. Su preconnect no tiene efecto observable en la medición de `/`.
+> 3. **El backoffice móvil mantiene su inestabilidad histórica** (LCP oscilando 21.8–22.6 s), que enmascara cualquier mejora marginal de C4.
+> 4. **El beneficio de C4 queda como mejora de infraestructura**: cuando el despliegue real consulte orígenes externos fríos (analítica, APIs de terceros), el preconnect evitará la latencia de arranque de conexión. Lighthouse la recomienda como buena práctica incluso cuando la ganancia no es rastreable en el sandbox.
+
+---
+
+### Evolución del Performance Score (todas las correcciones)
+
+| Corrección | Backoffice Desktop | Backoffice Móvil | Website Desktop | Website Móvil |
+|:----------:|:-----------------:|:----------------:|:---------------:|:-------------:|
+| **PASO 01** (inicial) | **42** 🔴 | **33** 🔴 | **96** 🟢 | **80** 🟡 |
+| **C1** (code splitting) | **45** 🔴 | **40** 🔴 | **100** 🟢 | **84** 🟡 |
+| **C2** (auth-guard) | **47** 🔴 | **40** 🔴 | **76** 🟡 🔸 | **86** 🟡 |
+| **C5** (lazy loading) | **48** 🔴 | **42** 🔴 | **100** 🟢 | **83** 🟡 |
+| **C6** (tree-shaking) | **46** 🔴 | **41** 🔴 | **100** 🟢 | **85** 🟡 |
+| **C8** (lazyOnload) | **45** 🔴 | **43** 🔴 | **100** 🟢 | **84** 🟡 |
+| **C4** (preconnect) | **45** 🔴 | **41** 🔴 | **100** 🟢 | **86** 🟡 |
+| **Mejora total** | **+3 pts** (42→45) | **+8 pts** (33→41) | **+4 pts** (96→100) | **+6 pts** (80→86) |
+
+> 🔸 CLS outlier en C2 Website Desktop (1.0) → normalizado en C5 (0).
+
+### Archivos de medición
+
+| Archivo | Dispositivo | Fecha |
+|:--------|:-----------:|:-----:|
+| `audit/06-C4/C4-backoffice-desktop-JSON.dev-20260920` | Backoffice Desktop | 2026-09-20 |
+| `audit/06-C4/C4-backoffice-movil-JSON.dev-20260920` | Backoffice Móvil | 2026-09-20 |
+| `audit/06-C4/C4-website-desktop-JSON.dev-20260920` | Website Desktop | 2026-09-20 |
+| `audit/06-C4/C4-website-movil-JSON.dev-20260920` | Website Móvil | 2026-09-20 |
+

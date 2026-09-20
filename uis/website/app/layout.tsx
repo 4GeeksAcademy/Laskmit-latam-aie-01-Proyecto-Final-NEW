@@ -1,7 +1,14 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+
+// C4 — Orígenes críticos del website (preconnect + dns-prefetch)
+const CRITICAL_ORIGINS = [
+  "https://playground.4geeks.com",
+  "https://gc.kes.v2.scr.kaspersky-labs.com",
+] as const;
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -27,7 +34,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
     >
       <head>
-        <link rel="dns-prefetch" href="https://gc.kes.v2.scr.kaspersky-labs.com" />
+        {CRITICAL_ORIGINS.map((origin) => (
+          <Fragment key={origin}>
+            <link rel="dns-prefetch" href={origin} />
+            <link rel="preconnect" href={origin} crossOrigin="anonymous" />
+          </Fragment>
+        ))}
       </head>
       <body>
         {children}
