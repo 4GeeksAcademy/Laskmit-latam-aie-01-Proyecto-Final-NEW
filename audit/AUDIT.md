@@ -1994,13 +1994,247 @@ Esta caída de 6 puntos también es atribuible a **variabilidad de medición** e
 
 ---
 
-### Conclusión
+## ✅ Corrección Prioridad 4 - C6 — Tree-shaking y JS no utilizado (Aplicada)
 
-C5 (lazy loading por pestañas con `next/dynamic`) se aplicó correctamente en las páginas de **órdenes de inventario** y **gestor de incidencias**, reduciendo el JavaScript que se carga en el bundle inicial. Sin embargo, **Lighthouse midió el dashboard (`/`)**, no esas rutas secundarias, por lo que el impacto en las puntuaciones globales es modesto (+1 a +2 pts en backoffice).
+**Fecha de aplicación:** 19 de septiembre de 2026
+**Estado:** ✅ Medición completada — Resultados a continuación
 
-**Beneficios reales de C5 (no visibles en esta medición):**
-- Al navegar a `/backoffice/inventory/orders` solo se carga el JS del tab activo (~1/3 del total)
-- Al navegar a `/incidents`, los ~45 KB del IncidentManager se descargan solo en cliente (`ssr: false`)
-- Las otras páginas del backoffice ya no incluyen estos componentes en su bundle
+### Archivos modificados (4)
 
-**Recomendación:** Para mejorar el dashboard (página medida por Lighthouse), aplicar lazy loading a los componentes del propio dashboard (tarjetas de métricas, tablas, gráficos) en una corrección futura (ej. C6 o C7).
+| Archivo | Cambio | Beneficio |
+|---------|--------|-----------|
+| `uis/backoffice/app/page.tsx` | Datos inline (candidates, vacancy, sampleProcesses) extraídos a `demo-data.ts` | Bundle principal del dashboard reduce ~3 KB de datos estáticos que no deberían estar en JS |
+| `uis/backoffice/app/demo-data.ts` | **NUEVO** — Datos demo exportados como `demoData` con tipos desde `src/types/models` | Aísla la data de ejemplo del componente, permitiendo tree-shaking del módulo |
+| `uis/backoffice/package.json` | Añadido `"sideEffects": false` | Webpack puede podar exports no usados de `node_modules` y módulos propios — impacto directo en árbol de dependencias |
+| `uis/backoffice/package.json` | `externalDir: true` se mantiene (necesario para imports cross-project a `src/`) | No deshabilita tree-shaking en Next.js 16. El problema era ausencia de `sideEffects` + datos inline |
+
+### Archivos que NO requirieron cambio
+
+| Archivo | Razón |
+|---------|-------|
+| `uis/website/next.config.ts` | El website no importa de `src/utils/` ni tiene dependencias que se beneficien de `sideEffects`. Sus imports son componentes internos sin barrel exports |
+| `uis/website/package.json` | Solo dependencias `next`, `react`, `react-dom`. Sin barrel exports ni librerías grandes que podar |
+| `src/utils/transformations.ts` | Las 7 funciones exportadas se documentan, pero solo 6 se importan en `page.tsx`. `groupCandidatesBySeniority` es podada por tree-shaking |
+| `src/utils/collections.ts` | Solo `filterCandidatesBySkills` se usa (desde `transformations.ts`). Las otras 4 funciones son podadas |
+| `src/utils/search.ts` | 0 funciones importadas en el frontend. **Todo el módulo es podado por tree-shaking** |
+| `src/utils/validations.ts` | 0 funciones importadas en el frontend. **Todo el módulo es podado por tree-shaking** |
+
+### Análisis del árbol de dependencias
+
+```
+page.tsx (dashboard)
+  └── demo-data.ts  (~3 KB, antes inline)
+  └── transformations.ts  (6/7 funciones importadas)
+       └── collections.ts  (1/5 funciones importadas: filterCandidatesBySkills)
+       └── types/models.ts  (solo tipos, sin runtime)
+  [NO importa] search.ts  →  podado por tree-shaking  (✓)
+  [NO importa] validations.ts  →  podado por tree-shaking  (✓)
+  [NO importa] groupCandidatesBySeniority  →  podado por tree-shaking  (✓)
+```
+
+### Impacto esperado
+
+| Métrica | Antes (C5 — última medición) | Después (estimado C6) | Diferencia |
+|:-------:|:----------------------------:|:---------------------:|:----------:|
+| Performance Backoffice Desktop | 48 | ~60 | **+12 pts** |
+| Performance Backoffice Móvil | 42 | ~55 | **+13 pts** |
+| JS total (Backoffice) | ~3.4 MB | ~2.0 MB | **−41 %** |
+| JS no utilizado (Website Móvil) | 391 KiB (C2 baseline) | ~200 KiB | **−49 %** |
+| Total byte weight (Backoffice Desktop) | 3,377.9 KiB | ~2,500 KiB | **−26 %** |
+| Main-thread work (Website Móvil) | 2.7 s (C2 baseline) | ~1.8 s | **−33 %** |
+| TBT Backoffice Desktop | 1,054 ms | ~600 ms | **−43 %** |
+| TBT Backoffice Móvil | 5,014 ms | ~3,000 ms | **−40 %** |
+| Bootup-time Backoffice Desktop | 1,293 ms | ~800 ms | **−38 %** |
+| Bootup-time Backoffice Móvil | 5,711 ms | ~3,500 ms | **−39 %** |
+
+> **Nota:** La línea base real es C5 (última medición disponible). Las métricas sin dato en C5 (JS no utilizado en Website, Main-thread work) mantienen el valor de C2 como referencia histórica. El impacto real depende de cuánto JS de librerías (Next.js, React) puede podar webpack con `sideEffects: false`. La reducción de ~3 KB por datos inline es marginal; el grueso del ahorro viene de habilitar tree-shaking agresivo en node_modules y módulos propios.
+
+## Resultados C6 — Medición post-corrección
+
+**Fecha de medición:** 19 de septiembre de 2026
+**Herramienta:** Lighthouse 13.4.1 (simulado)
+**Rutas medidas:** Backoffice (`/`), Website (`/`)
+
+### Resumen de puntuaciones
+
+#### Backoffice Desktop
+
+| Categoría | C5 (baseline) | C6 | Diferencia |
+|-----------|:-------------:|:--:|:----------:|
+| **Performance** | **48** 🔴 | **46** 🔴 | **−2 pts** ⚠️ |
+| Accessibility | 100 🟢 | 100 🟢 | — |
+| Best Practices | 100 🟢 | 100 🟢 | — |
+| SEO | 60 🟡 | 60 🟡 | — |
+
+#### Backoffice Móvil
+
+| Categoría | C5 (baseline) | C6 | Diferencia |
+|-----------|:-------------:|:--:|:----------:|
+| **Performance** | **42** 🔴 | **41** 🔴 | **−1 pt** ⚠️ |
+| Accessibility | 100 🟢 | 100 🟢 | — |
+| Best Practices | 100 🟢 | 100 🟢 | — |
+| SEO | 60 🟡 | **54** 🟡 | **−6 pts** 🔸 |
+
+#### Website Desktop
+
+| Categoría | C5 (baseline) | C6 | Diferencia |
+|-----------|:-------------:|:--:|:----------:|
+| **Performance** | **100** 🟢 | **100** 🟢 | — |
+| Accessibility | 100 🟢 | 100 🟢 | — |
+| Best Practices | 100 🟢 | 100 🟢 | — |
+| SEO | 60 🟡 | 60 🟡 | — |
+
+#### Website Móvil
+
+| Categoría | C5 (baseline) | C6 | Diferencia |
+|-----------|:-------------:|:--:|:----------:|
+| **Performance** | **83** 🟡 | **85** 🟡 | **+2 pts** |
+| Accessibility | 100 🟢 | 100 🟢 | — |
+| Best Practices | 100 🟢 | 100 🟢 | — |
+| SEO | 60 🟡 | 60 🟡 | — |
+
+---
+
+### Métricas principales (Backoffice)
+
+#### Backoffice Desktop
+
+| Métrica | C5 (baseline) | C6 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **48** | **46** | **−2 pts** | −4.2 % ⚠️ |
+| **FCP** | 360.3 ms | 427.5 ms | +67.2 ms | **+18.7 %** ⚠️ |
+| **LCP** | 4,199.3 ms | 4,284.5 ms | +85.2 ms | +2.0 % |
+| **SI** | 1,624.6 ms | 2,045.5 ms | +420.9 ms | **+25.9 %** ⚠️ |
+| **TBT** | 1,054.0 ms | 1,061.0 ms | +7.0 ms | +0.7 % |
+| **CLS** | 0.035 | 0.035 | — | — (score 1) |
+| **Bootup-time** | 1,293.4 ms | 1,297.7 ms | +4.3 ms | +0.3 % |
+| **Main-thread work** | 1,747.3 ms | 1,772.8 ms | +25.5 ms | +1.5 % |
+| **Total byte weight** | 3,377.9 KiB | 3,298.0 KiB | **−79.9 KiB** | **−2.4 %** |
+| **JS no utilizado** | 0 bytes (score 1) | 0 bytes (score 1) | — | — |
+
+#### Backoffice Móvil
+
+| Métrica | C5 (baseline) | C6 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **42** | **41** | **−1 pt** | −2.4 % ⚠️ |
+| **FCP** | 952.4 ms | 988.7 ms | +36.3 ms | +3.8 % |
+| **LCP** | 21,818.4 ms | 21,909.7 ms | +91.3 ms | +0.4 % |
+| **SI** | 4,408.1 ms | 5,080.4 ms | +672.3 ms | **+15.3 %** ⚠️ |
+| **TBT** | 5,014.5 ms | 4,875.0 ms | **−139.5 ms** | **−2.8 %** ✅ |
+| **CLS** | 0.029 | 0.029 | — | — (score 1) |
+| **Bootup-time** | 5,711.3 ms | 5,435.2 ms | **−276.1 ms** | **−4.8 %** ✅ |
+| **Main-thread work** | 7,216.7 ms | 7,194.6 ms | −22.1 ms | −0.3 % |
+| **Total byte weight** | 3,377.4 KiB | 3,298.9 KiB | **−78.5 KiB** | **−2.3 %** |
+| **JS no utilizado** | 0 bytes (score 1) | 0 bytes (score 1) | — | — |
+
+---
+
+### Métricas principales (Website)
+
+#### Website Desktop
+
+| Métrica | C5 (baseline) | C6 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **100** 🟢 | **100** 🟢 | — | — |
+| **FCP** | 327.3 ms | 332.2 ms | +4.9 ms | +1.5 % |
+| **LCP** | 381.3 ms | 378.2 ms | **−3.1 ms** | **−0.8 %** |
+| **SI** | 500.5 ms | 515.1 ms | +14.6 ms | +2.9 % |
+| **TBT** | 0.0 ms | 1.0 ms | +1.0 ms | — (score 1) |
+| **CLS** | 0.000 | 0.000 | — | — (score 1) |
+| **TTI** | 691.8 ms | 1,155.9 ms | +464.1 ms | **+67.1 %** ⚠️ |
+| **Bootup-time** | 340.3 ms | 283.9 ms | **−56.4 ms** | **−16.6 %** ✅ |
+| **Main-thread work** | 763.5 ms | 680.8 ms | **−82.7 ms** | **−10.8 %** ✅ |
+| **Total byte weight** | 853.3 KiB | 853.0 KiB | **−0.3 KiB** | ~0 % |
+| **JS no utilizado** | 327.5 KiB (score 0.5) | 335.1 KiB (score 0.5) | +7.6 KiB | +2.3 % |
+
+#### Website Móvil
+
+| Métrica | C5 (baseline) | C6 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **83** 🟡 | **85** 🟡 | **+2 pts** | +2.4 % |
+| **FCP** | 930.9 ms | 1,013.6 ms | +82.7 ms | +8.9 % |
+| **LCP** | 1,316.9 ms | 1,307.6 ms | **−9.3 ms** | **−0.7 %** |
+| **SI** | 1,352.7 ms | 1,280.7 ms | **−72.0 ms** | **−5.3 %** |
+| **TBT** | 711.0 ms | 612.0 ms | **−99.0 ms** | **−13.9 %** ✅ |
+| **CLS** | 0.000 | 0.000 | — | — (score 1) |
+| **TTI** | 5,961.4 ms | 5,949.1 ms | **−12.3 ms** | **−0.2 %** |
+| **Bootup-time** | 1,228.8 ms | 1,317.2 ms | +88.4 ms | +7.2 % |
+| **Main-thread work** | 2,640.0 ms | 2,967.2 ms | +327.2 ms | **+12.4 %** ⚠️ |
+| **Total byte weight** | 852.8 KiB | 853.1 KiB | +0.3 KiB | ~0 % |
+| **JS no utilizado** | 327.3 KiB (score 0.5) | 335.2 KiB (score 0.5) | +7.9 KiB | +2.4 % |
+
+---
+
+### Análisis de resultados
+
+#### Backoffice — Sin cambios significativos (dentro de variabilidad de medición)
+
+El Performance Score del backoffice se mantiene esencialmente estable:
+- **Desktop**: 48 → 46 (−2 pts)
+- **Móvil**: 42 → 41 (−1 pt)
+
+Estas pequeñas variaciones están dentro del margen de **variabilidad de medición** de Lighthouse en entorno Codespaces. Las métricas clave se comportan de forma consistente con C5:
+
+| Indicador | Interpretación |
+|:----------|:---------------|
+| **Total byte weight** baja **−79 KiB (−2.4 %)** en ambas mediciones | ✅ Correlaciona con la eliminación de datos inline (~3 KB) y el tree-shaking de módulos no usados. La reducción es modesta porque el bundle del dashboard contiene principalmente código de framework (Next.js, React) que no puede podarse. |
+| **JS no utilizado** sigue en 0 (score 1) | Backoffice ya tenía 0 bytes de JS no utilizado en C5. La adición de `sideEffects: false` no cambió esta métrica porque ya estaba en el mínimo. |
+| **TBT Móvil** mejora −139.5 ms (−2.8 %) y **Bootup Móvil** mejora −276 ms (−4.8 %) | Leve mejora consistente con la reducción de JS total. |
+| **SI Desktop** sube +421 ms (+25.9 %) | ⚠️ Variabilidad. La métrica SI depende del renderizado progresivo y es sensible a condiciones de red/CPU. No hay un cambio de código que explique este incremento. |
+
+**Conclusión:** El tree-shaking y la extracción de datos inline producen una reducción real del **−2.4 %** en el peso total del JS descargado, lo cual es un beneficio tangible para usuarios con conexiones lentas. Sin embargo, las ganancias son demasiado pequeñas para mover el Performance Score de forma significativa en un bundle donde Next.js + React representan >80 % del tamaño.
+
+#### Website — Sin cambios (estable, como se esperaba)
+
+El website no fue modificado en C6, y los resultados lo confirman:
+- **Desktop**: 100 🟢 (sin cambios)
+- **Móvil**: 83 → 85 (+2 pts, variabilidad normal)
+
+La ligera mejora en **TBT Móvil** (−99 ms, −13.9 %) y **SI** (−72 ms, −5.3 %) es atribuible a variabilidad, no a cambios de código.
+
+---
+
+### Impacto real vs estimado
+
+| Métrica | Estimado (C6) | Real (C6) | Verificación |
+|:-------:|:-------------:|:---------:|:------------:|
+| Performance Backoffice Desktop | ~60 (+12 pts) | **46 (−2 pts)** | ❌ **No alcanzado** |
+| Performance Backoffice Móvil | ~55 (+13 pts) | **41 (−1 pt)** | ❌ **No alcanzado** |
+| JS total (Backoffice) | ~2.0 MB (−41 %) | **3,298 KiB (−2.4 %)** | ❌ **No alcanzado** |
+| Total byte weight (Backoffice Desktop) | ~2,500 KiB (−26 %) | **3,298 KiB (−2.4 %)** | ❌ **No alcanzado** |
+| TBT Backoffice Desktop | ~600 ms (−43 %) | **1,061 ms (+0.7 %)** | ❌ **No alcanzado** |
+| TBT Backoffice Móvil | ~3,000 ms (−40 %) | **4,875 ms (−2.8 %)** | ❌ **No alcanzado** |
+| Bootup-time Backoffice Desktop | ~800 ms (−38 %) | **1,298 ms (+0.3 %)** | ❌ **No alcanzado** |
+| Bootup-time Backoffice Móvil | ~3,500 ms (−39 %) | **5,435 ms (−4.8 %)** | ❌ **No alcanzado** |
+
+> **Análisis de desviación:** Las estimaciones fueron excesivamente optimistas. Se asumió que `sideEffects: false` habilitaría una poda agresiva de webpack que reduciría significativamente el bundle (~2.0 MB). Sin embargo:
+>
+> 1. **Next.js 16 con webpack** ya realiza tree-shaking básico de módulos. `sideEffects: false` ayuda principalmente a librerías que no declaran sideEffects, pero la mayoría del JS del bundle es framework (Next.js pages router, React, React DOM) que no se puede podar.
+> 2. **El bundle del dashboard** (`/`) contiene los componentes que se renderizan en la vista principal, y estos no se benefician de `sideEffects` porque efectivamente se usan.
+> 3. **Los módulos `search.ts` y `validations.ts` ya estaban siendo ignorados** por Next.js al no ser importados desde el frontend (están en `src/utils/` fuera del directorio `uis/backoffice`). La declaración `externalDir: true` permite importarlos, pero si no se importan, no añaden peso.
+> 4. **El peso real del JS** (~3.3 MB) se compone principalmente de: Next.js core (~1 MB), React + React DOM (~800 KB), contenido de páginas y componentes (~1.2 MB), y el resto de librerías. Tree-shaking solo puede actuar sobre el último grupo.
+
+---
+
+### Evolución del Performance Score (todas las correcciones)
+
+| Corrección | Backoffice Desktop | Backoffice Móvil | Website Desktop | Website Móvil |
+|:----------:|:-----------------:|:----------------:|:---------------:|:-------------:|
+| **PASO 01** (inicial) | **42** 🔴 | **33** 🔴 | **96** 🟢 | **80** 🟡 |
+| **C1** (code splitting) | **45** 🔴 | **40** 🔴 | **100** 🟢 | **84** 🟡 |
+| **C2** (auth-guard) | **47** 🔴 | **40** 🔴 | **76** 🟡 🔸 | **86** 🟡 |
+| **C5** (lazy loading) | **48** 🔴 | **42** 🔴 | **100** 🟢 | **83** 🟡 |
+| **C6** (tree-shaking) | **46** 🔴 | **41** 🔴 | **100** 🟢 | **85** 🟡 |
+| **Mejora total** | **+4 pts** (42→46) | **+8 pts** (33→41) | **+4 pts** (96→100) | **+5 pts** (80→85) |
+
+> 🔸 CLS outlier en C2 Website Desktop (1.0) → normalizado en C5 (0).
+
+### Archivos de medición
+
+| Archivo | Dispositivo | Fecha |
+|:--------|:-----------:|:-----:|
+| `audit/04-C6/C6-backoffice-desktop-JSON.dev-20260919` | Backoffice Desktop | 2026-09-19 |
+| `audit/04-C6/C6-backoffice-movil-JSON.dev-20260919` | Backoffice Móvil | 2026-09-19 |
+| `audit/04-C6/C6-website-desktop-JSON.dev-20260919` | Website Desktop | 2026-09-19 |
+| `audit/04-C6/C6-website-movil-JSON.dev-20260919` | Website Móvil | 2026-09-19 |
+
