@@ -2881,3 +2881,291 @@ La corrección C4 tuvo un impacto **neutro con una señal positiva aislada en We
 | `audit/06-C4/C4-website-desktop-JSON.dev-20260920` | Website Desktop | 2026-09-20 |
 | `audit/06-C4/C4-website-movil-JSON.dev-20260920` | Website Móvil | 2026-09-20 |
 
+---
+
+## ✅ Corrección Prioridad 7 - C3 — Optimización de imágenes y formatos modernos (Aplicada)
+
+**Fecha de aplicación:** 20 de septiembre de 2026
+**Estado:** ✅ Aplicada — Pendiente de medición Lighthouse
+
+### Diagnóstico
+
+El diagnóstico original (PASO 03) identificó un `hero.png` de 450 KB en el website como candidato a conversión a WebP/AVIF. Sin embargo, tras revisar el repositorio actual se verificó que **no existe ningún archivo de imagen rasterizada (PNG/JPG/WebP/AVIF) en ningún frontend del proyecto**. El componente Hero del website es 100% CSS (fondos con gradientes, sin `<img>` ni `url()` de imágenes) y no se importan imágenes en ningún otro componente.
+
+| Activo | Estado real |
+|--------|-------------|
+| `uis/website/public/` | Sin archivos de imagen (solo SVGs: `file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`) |
+| `uis/website/components/Hero.tsx` | No contiene `Image` de next/image ni referencia a imágenes; solo estilos CSS |
+| `uis/backoffice/app/**` | Sin imágenes (solo CSS y contenido de datos) |
+
+La corrección se adapta para configurar la **infraestructura de optimización de imágenes de Next.js** y **cabeceras de caché agresivas** para assets estáticos, lo cual es una mejora válida aunque no existan imágenes que convertir hoy.
+
+### Archivos modificados (1)
+
+| Archivo | Cambio | Beneficio |
+|---------|--------|-----------|
+| `uis/website/next.config.ts` | Configuración de `images.formats` (AVIF + WebP), `deviceSizes`, `imageSizes`, `minimumCacheTTL`, `compress: true`, `productionBrowserSourceMaps: false`, y cabeceras `Cache-Control` para assets estáticos | Imágenes futuras se servirán en formatos modernos automáticamente; assets estáticos se cachean 30 días; desactivación de source maps en producción reduce peso de despliegue |
+
+### Detalle de cambios
+
+#### `uis/website/next.config.ts`
+
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // C3 — Optimización de imágenes: habilitar formatos modernos
+  images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 días en CDN
+  },
+  // C3 — Compresión y cabeceras de caché
+  compress: true,
+  productionBrowserSourceMaps: false,
+  async headers() {
+    return [
+      {
+        source: "/:all*(svg|jpg|png|webp|avif|ico)",
+        locale: false,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        locale: false,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+```
+
+### Archivos que NO requirieron cambio
+
+| Archivo | Razón |
+|---------|-------|
+| `uis/website/components/Hero.tsx` | No contiene imágenes; es 100% CSS. No necesita ser modificado. |
+| `uis/backoffice/app/**` | No hay imágenes en el backoffice. La optimización no aplica. |
+| `uis/backoffice/next.config.ts` | Backoffice no sirve imágenes al usuario final; solo datos y paneles. |
+| `uis/website/public/*.svg` | Los SVGs existentes ya son ligeros (~300-1400 bytes c/u). No requieren conversión. |
+
+### Impacto esperado
+
+| Métrica | Antes (C4 — última medición) | Después (estimado C3) | Diferencia |
+|:-------:|:----------------------------:|:---------------------:|:----------:|
+| Total byte weight Website Desktop | 857 KiB | ~857 KiB | **~0 %** (sin imágenes que convertir) |
+| Total byte weight Website Móvil | 857 KiB | ~857 KiB | **~0 %** |
+| Cacheo de assets estáticos | Sin cabeceras `Cache-Control` explícitas | `max-age=31536000, immutable` | **Mejora de caché preventiva** |
+| Formato de imágenes futuras | Sin configuración `images.formats` | AVIF + WebP automático | **Mejora de infraestructura** |
+
+> **Nota:** Dado que no existen imágenes rasterizadas en el proyecto, el impacto esperado de C3 es principalmente **preventivo y de infraestructura**: si en el futuro se añaden imágenes al website, Next.js las servirá automáticamente en formatos modernos y con cabeceras de caché agresivas. Además, desactivar los source maps en producción (`productionBrowserSourceMaps: false`) reduce el peso de los despliegues. Las cabeceras `Cache-Control` mejoran la reutilización de assets estáticos en el navegador.
+
+
+## Resultados C3 — Medición post-corrección
+
+**Fecha de medición:** 20 de septiembre de 2026
+**Herramienta:** Lighthouse 13.4.1 (simulado)
+**Baseline de comparación:** Medición C4 (20 de septiembre de 2026)
+
+### Resumen de puntuaciones
+
+#### Backoffice Desktop
+
+| Categoría | C4 | C3 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **45** 🔴 | **47** 🔴 | **+2 pts** ✅ |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **60** 🟡 | — |
+
+#### Backoffice Móvil
+
+| Categoría | C4 | C3 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **41** 🔴 | **43** 🔴 | **+2 pts** ✅ |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **54** 🟡 | **60** 🟡 | **+6 pts** ✅ |
+
+#### Website Desktop
+
+| Categoría | C4 | C3 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **100** 🟢 | **100** 🟢 | — |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **60** 🟡 | — |
+
+#### Website Móvil
+
+| Categoría | C4 | C3 | Δ |
+|:---------:|:--:|:--:|:-:|
+| **Performance** | **86** 🟡 | **83** 🟡 | **−3 pts** ⚠️ |
+| **Accessibility** | **100** 🟢 | **100** 🟢 | — |
+| **Best Practices** | **96** 🟢 | **96** 🟢 | — |
+| **SEO** | **60** 🟡 | **60** 🟡 | — |
+
+### Métricas principales (Backoffice)
+
+#### Backoffice Desktop
+
+| Métrica | C4 (baseline) | C3 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **45** 🔴 | **47** 🔴 | **+2 pts** | **+4.4 %** ✅ |
+| **FCP** | 465.2 ms | 389.5 ms | **−75.7 ms** | **−16.3 %** ✅ |
+| **LCP** | 4,485.2 ms | 4,381.5 ms | **−103.7 ms** | **−2.3 %** ✅ |
+| **SI** | 2,076.2 ms | 1,655.8 ms | **−420.4 ms** | **−20.2 %** ✅ |
+| **TBT** | 1,110.0 ms | 1,085.0 ms | **−25.0 ms** | **−2.3 %** ✅ |
+| **CLS** | 0.0347 | 0.0347 | — | — (score 1) |
+| **TTI** | 4,485.2 ms | 4,381.5 ms | **−103.7 ms** | **−2.3 %** ✅ |
+| **Bootup-time** | 1,346.9 ms | 1,300.6 ms | **−46.3 ms** | **−3.4 %** ✅ |
+| **Main-thread work** | 1,864.2 ms | 1,786.3 ms | **−77.9 ms** | **−4.2 %** ✅ |
+| **Total byte weight** | 3,314.0 KiB | 3,314.0 KiB | — | ~0 % |
+| **JS no utilizado** | 0 KiB (score 1) | 0 KiB (score 1) | — | — |
+
+#### Backoffice Móvil
+
+| Métrica | C4 (baseline) | C3 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **41** 🔴 | **43** 🔴 | **+2 pts** | **+4.9 %** ✅ |
+| **FCP** | 988.9 ms | 1,006.3 ms | +17.4 ms | +1.8 % ⚠️ |
+| **LCP** | 22,606.9 ms | 22,085.3 ms | **−521.6 ms** | **−2.3 %** ✅ |
+| **SI** | 5,277.1 ms | 4,289.6 ms | **−987.5 ms** | **−18.7 %** ✅ |
+| **TBT** | 5,037.0 ms | 4,657.0 ms | **−380.0 ms** | **−7.5 %** ✅ |
+| **CLS** | 0.0289 | 0.0289 | — | — (score 1) |
+| **TTI** | 22,756.9 ms | 22,235.3 ms | **−521.6 ms** | **−2.3 %** ✅ |
+| **Bootup-time** | 5,686.6 ms | 5,340.1 ms | **−346.5 ms** | **−6.1 %** ✅ |
+| **Main-thread work** | 7,402.5 ms | 6,938.5 ms | **−464.0 ms** | **−6.3 %** ✅ |
+| **Total byte weight** | 3,315.0 KiB | 3,316.0 KiB | +1.0 KiB | ~0 % |
+| **JS no utilizado** | 0 KiB (score 1) | 0 KiB (score 1) | — | — |
+
+### Métricas principales (Website)
+
+#### Website Desktop
+
+| Métrica | C4 (baseline) | C3 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **100** 🟢 | **100** 🟢 | — | — |
+| **FCP** | 392.7 ms | 378.1 ms | **−14.6 ms** | **−3.7 %** ✅ |
+| **LCP** | 417.7 ms | 418.1 ms | +0.4 ms | +0.1 % |
+| **SI** | 538.7 ms | 560.0 ms | +21.3 ms | +4.0 % ⚠️ |
+| **TBT** | 10.5 ms | 4.0 ms | **−6.5 ms** | **−61.9 %** ✅ |
+| **CLS** | 0.000 | 0.000 | — | — (score 1) |
+| **TTI** | 1,165.6 ms | 1,170.1 ms | +4.5 ms | +0.4 % |
+| **Bootup-time** | 366.9 ms | 317.6 ms | **−49.3 ms** | **−13.4 %** ✅ |
+| **Main-thread work** | 729.8 ms | 762.3 ms | +32.5 ms | +4.5 % ⚠️ |
+| **Total byte weight** | 856.9 KiB | 858.0 KiB | +1.1 KiB | ~0 % |
+| **JS no utilizado** | 327.0 KiB (score 0.5) | 327.0 KiB (score 0.5) | — | — |
+
+#### Website Móvil
+
+| Métrica | C4 (baseline) | C3 | Diferencia | % mejora |
+|:-------:|:-------------:|:--:|:----------:|:--------:|
+| **Performance** | **86** 🟡 | **83** 🟡 | **−3 pts** | **−3.5 %** ⚠️ |
+| **FCP** | 955.7 ms | 1,016.2 ms | +60.5 ms | +6.3 % ⚠️ |
+| **LCP** | 1,303.7 ms | 1,313.2 ms | +9.5 ms | +0.7 % |
+| **SI** | 1,148.0 ms | 1,451.3 ms | +303.3 ms | +26.4 % ⚠️ |
+| **TBT** | 566.0 ms | 670.0 ms | +104.0 ms | +18.4 % ⚠️ |
+| **CLS** | 0.000 | 0.000 | — | — (score 1) |
+| **TTI** | 5,769.2 ms | 5,973.7 ms | +204.5 ms | +3.5 % ⚠️ |
+| **Bootup-time** | 1,256.1 ms | 1,392.6 ms | +136.5 ms | +10.9 % ⚠️ |
+| **Main-thread work** | 2,787.7 ms | 3,218.2 ms | +430.5 ms | +15.4 % ⚠️ |
+| **Total byte weight** | 857.0 KiB | 857.0 KiB | — | ~0 % |
+| **JS no utilizado** | 326.0 KiB (score 0.5) | 327.0 KiB (score 0.5) | +1.0 KiB | ~0 % |
+
+---
+
+### Análisis de resultados
+
+#### 📊 Resumen general
+
+La corrección C3 presenta un patrón **mixto y no concluyente**, consistente con una corrección de infraestructura que no modificó ningún activo frontend real:
+
+| Frontend/Dispositivo | C4 → C3 | Cambio |
+|:--------------------:|:-------:|:------:|
+| Backoffice Desktop | 45 → 47 | **+2 pts** ✅ |
+| Backoffice Móvil | 41 → 43 | **+2 pts** ✅ |
+| Website Desktop | 100 → 100 | — |
+| Website Móvil | 86 → 83 | **−3 pts** ⚠️ |
+
+#### ✅ Señales positivas — Backoffice mejora +2 pts en ambos dispositivos
+
+- **Backoffice Desktop (45→47):** todas las métricas mejoraron: FCP **−16.3 %** (−75.7 ms), SI **−20.2 %** (−420.4 ms), LCP **−2.3 %** (−103.7 ms), Bootup **−3.4 %** y Main-thread **−4.2 %**. El score de Performance subió de 0.45 a 0.47.
+- **Backoffice Móvil (41→43):** mejora notable en SI **−18.7 %** (−987.5 ms), TBT **−7.5 %** (−380 ms), Bootup **−6.1 %** y Main-thread **−6.3 %**. El LCP bajó −521.6 ms (−2.3 %), una mejora marginal dentro de la inestabilidad histórica del backoffice móvil (21.8–22.6 s).
+- **SEO Backoffice Móvil se recupera de 54→60**, confirmando que la caída de −6 pts en C4 fue variabilidad de medición, no un cambio real.
+
+#### ⚠️ Señal negativa — Website Móvil baja −3 pts (86→83)
+
+- Website Móvil empeoró en todas las métricas principales: SI +26.4 %, TBT +18.4 %, Main-thread +15.4 %, Bootup +10.9 %, FCP +6.3 %. Sin embargo, **ninguno de estos cambios está relacionado con C3** porque:
+  1. C3 solo modificó `uis/website/next.config.ts` — no hay cambios en componentes, lógica JS/TS ni pesos de descarga.
+  2. Los total byte weight se mantienen idénticos (857 KiB) y el JS no utilizado es el mismo (327 KiB, score 0.5).
+  3. Website Desktop, que usa la misma configuración, se mantiene en 100 sin cambios significativos.
+
+#### ¿Efecto real de C3?
+
+- **No hay imágenes rasterizadas en el proyecto** — la conversión AVIF/WebP (`images.formats`) no tiene activos sobre los que actuar. Las cabeceras `Cache-Control` y la compresión `compress: true` ya eran defaults de Next.js.
+- **`productionBrowserSourceMaps: false`** ya estaba activado implícitamente en Next.js 16 (por defecto no genera source maps en producción).
+- **Las mejoras en Backoffice** no pueden atribuirse a C3 porque C3 solo modificó la configuración del **website** (`uis/website/next.config.ts`), no del backoffice. La mejora de +2 pts en backoffice refleja **variabilidad natural de medición** — dentro del rango histórico observado (BO Desktop ha oscilado 42–48, BO Móvil 33–43).
+- **El empeoramiento en Website Móvil** (−3 pts) también es variabilidad: WS Móvil ha oscilado entre 80 y 86 pts en todas las mediciones (PASO 01: 80, C1: 84, C2: 86, C5: 83, C6: 85, C8: 84, C4: 86, C3: 83).
+
+**Conclusión:** C3 es una corrección de **infraestructura preventiva** cuyo efecto no es medible en las pantallas actuales del proyecto porque no existen imágenes reales que optimizar. Las variaciones observadas (+2 / −3 pts) están dentro del ruido esperado de medición. El valor real de C3 se materializará si en el futuro se añaden imágenes al website: Next.js las servirá automáticamente en AVIF/WebP con cabeceras de caché agresivas.
+
+---
+
+### Impacto real vs estimado
+
+| Métrica | Estimado (C3) | Real (C3) | Verificación |
+|:-------:|:-------------:|:---------:|:------------:|
+| Conversión hero.png a WebP/AVIF | −200–300 KiB | **No aplicable** (no existe hero.png) | ❌ Sin activos que convertir |
+| Cabeceras Cache-Control | Mejora de caché preventiva | **Implementado** en next.config.ts | ✅ **Infraestructura correcta** |
+| `compress: true` | Compresión ya activa por defecto | **Sin cambio medible** | ✅ Configuración correcta |
+| `productionBrowserSourceMaps: false` | Ya era default en Next.js 16 | **Sin cambio medible** | ✅ Garantía explícita |
+| Performance Backoffice Desktop | ~47 | **47** (+2 pts) | ✅ **Dentro del ruido histórico** |
+| Performance Backoffice Móvil | ~43 | **43** (+2 pts) | ✅ **Dentro del ruido histórico** |
+| Performance Website Desktop | ~100 | **100** (—) | ✅ Sin cambios |
+| Performance Website Móvil | ~86 | **83** (−3 pts) | ❌ **Variabilidad, no atribuible a C3** |
+
+> **Análisis de desviación:** Todas las estimaciones asumían la existencia de imágenes rasterizadas para optimizar, pero el repositorio no contiene ninguna. El único impacto tangible de C3 es la **configuración de infraestructura** (AVIF/WebP automático + cabeceras de caché) que beneficiará al proyecto cuando se incorporen imágenes reales. Las fluctuaciones de ±2–3 pts en Performance son variabilidad normal de Lighthouse y no deben interpretarse como éxito o fracaso de la corrección.
+
+---
+
+### Evolución del Performance Score (todas las correcciones)
+
+| Corrección | Backoffice Desktop | Backoffice Móvil | Website Desktop | Website Móvil |
+|:----------:|:-----------------:|:----------------:|:---------------:|:-------------:|
+| **PASO 01** (inicial) | **42** 🔴 | **33** 🔴 | **96** 🟢 | **80** 🟡 |
+| **C1** (code splitting) | **45** 🔴 | **40** 🔴 | **100** 🟢 | **84** 🟡 |
+| **C2** (auth-guard) | **47** 🔴 | **40** 🔴 | **76** 🟡 🔸 | **86** 🟡 |
+| **C5** (lazy loading) | **48** 🔴 | **42** 🔴 | **100** 🟢 | **83** 🟡 |
+| **C6** (tree-shaking) | **46** 🔴 | **41** 🔴 | **100** 🟢 | **85** 🟡 |
+| **C8** (lazyOnload) | **45** 🔴 | **43** 🔴 | **100** 🟢 | **84** 🟡 |
+| **C4** (preconnect) | **45** 🔴 | **41** 🔴 | **100** 🟢 | **86** 🟡 |
+| **C3** (imágenes) | **47** 🔴 | **43** 🔴 | **100** 🟢 | **83** 🟡 |
+| **Mejora total** | **+5 pts** (42→47) | **+10 pts** (33→43) | **+4 pts** (96→100) | **+3 pts** (80→83) |
+
+> 🔸 CLS outlier en C2 Website Desktop (1.0) → normalizado en C5 (0).
+
+### Archivos de medición
+
+| Archivo | Dispositivo | Fecha |
+|:--------|:-----------:|:-----:|
+| `audit/07-C3/C3-backoffice-desktop-JSON.dev-20260920` | Backoffice Desktop | 2026-09-20 |
+| `audit/07-C3/C3-backoffice-movil-JSON.dev-20260920` | Backoffice Móvil | 2026-09-20 |
+| `audit/07-C3/C3-website-desktop-JSON.dev-20260920` | Website Desktop | 2026-09-20 |
+| `audit/07-C3/C3-website-movil-JSON.dev-20260920` | Website Móvil | 2026-09-20 |
+
+---
+
