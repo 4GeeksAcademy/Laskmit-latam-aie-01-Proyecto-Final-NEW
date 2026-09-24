@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import logging
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from pydantic import ValidationError
 from tinydb.table import Document
 
@@ -13,6 +13,7 @@ try:
     from services.api.auth import dependencies as auth_deps
     from services.api.incidents import service as incident_service
     from services.api.models import (
+        AnalysisResponse,
         IncidentBranch,
         IncidentCategory,
         IncidentCreate,
@@ -34,6 +35,7 @@ except ModuleNotFoundError:
     from auth import dependencies as auth_deps  # type: ignore[no-redef]
     from incidents import service as incident_service  # type: ignore[no-redef]
     from models import (
+        AnalysisResponse,
         IncidentBranch,
         IncidentCategory,
         IncidentCreate,
@@ -164,11 +166,11 @@ def get_incident(
     return incident
 
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_incidents(
     file: UploadFile = File(...),
     current_user: Document = Depends(auth_deps.get_current_user),
-) -> JSONResponse:
+) -> AnalysisResponse:
     global _last_analysis
 
     if not file.filename:
@@ -201,12 +203,10 @@ async def analyze_incidents(
         summary=summary,
     )
 
-    return JSONResponse(
-        {
-            "message": "Analysis completed",
-            "source_file": file.filename,
-            "summary": summary,
-        }
+    return AnalysisResponse(
+        message="Analysis completed",
+        source_file=file.filename,
+        summary=summary,
     )
 
 

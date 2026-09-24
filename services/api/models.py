@@ -153,6 +153,19 @@ class IncidentSummary(BaseModel):
     by_branch: dict[IncidentBranch, int]
 
 
+class AnalysisResponse(BaseModel):
+    """Respuesta tipada para POST /api/incidents/analyze.
+
+    El campo summary se define como dict[str, object] porque el diccionario
+    devuelto por shared.incidents_analysis.result_to_summary_dict() tiene una
+    estructura anidada (totals, categories, statuses, satisfaction, …) que no
+    coincide con IncidentSummary (usado para el endpoint /api/incidents/summary).
+    """
+    message: str
+    source_file: str
+    summary: dict[str, object]
+
+
 # ── Modelos ORM para inventario (SQLModel / Supabase) ────────────
 
 from sqlmodel import Field as SQLField, SQLModel  # noqa: E402, F811
