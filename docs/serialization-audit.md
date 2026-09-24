@@ -10,10 +10,10 @@
 
 La API se encuentra en un estado **avanzado de serialización**. La mayoría de endpoints ya declaran `response_model` explícito con esquemas Pydantic bien definidos. No se detectaron endpoints que devuelvan objetos ORM en crudo. Sin embargo, existen oportunidades de optimización en endpoints de listado (over-fetching) y en un endpoint no tipado (`POST /api/incidents/analyze`).
 
-| Estado | Cantidad |
-|--------|----------|
-| ✅ Ya serializado | 22 |
-| ⚠️ Parcialmente serializado | 3 |
+| Estado | Cantidad | Nota |
+|--------|----------|------|
+| ✅ Ya serializado | 23 | Tras Fase 2: `POST /api/incidents/analyze` sube de ⚠️ a ✅ |
+| ⚠️ Parcialmente serializado | 2 | (se excluyeron puntos 1 y 2 por decisión del proyecto) |
 | ❌ Sin serializar | 0 |
 
 ---
@@ -92,12 +92,12 @@ La API se encuentra en un estado **avanzado de serialización**. La mayoría de 
 | 22 | `/api/incidents/health` | GET | ✅ | `dict[str, str]` | Health check — respuesta mínima aceptable. |
 | 23 | `/api/incidents/{incident_id}/status` | PATCH | ✅ | `IncidentResponse` | Actualización parcial con esquema de entrada dedicado (`IncidentStatusUpdate`). |
 | 24 | `/api/incidents/{incident_id}` | GET | ✅ | `IncidentResponse` | Vista de detalle con esquema explícito. |
-| 25 | `/api/incidents/analyze` | POST | ⚠️ | `JSONResponse` (dict sin tipar) | El payload de respuesta no tiene un modelo Pydantic declarado. Aunque el contenido se construye con un dict, sería más robusto definir un `AnalysisResponse` con `message`, `source_file` y `summary`. |
+| 25 | `/api/incidents/analyze` | POST | ✅ | `AnalysisResponse` (message, source_file, summary) | Se creó `AnalysisResponse` en `services/api/models.py` con `message: str`, `source_file: str`, `summary: dict[str, object]`. El endpoint ahora declara `response_model=AnalysisResponse`. |
 | 26 | `/api/incidents/results/export` | GET | ✅ | `Response` (CSV) | Endpoint de descarga de archivo — no aplica response_model JSON. Correcto. |
 
 **Análisis de over-fetching:** ⚠️ `GET /api/incidents` devuelve `IncidentResponse` completo, que incluye `description`. Si el listado de incidencias en la UI solo muestra título, categoría, estado y fecha, `description` es tráfico innecesario.
 
-**Endpoint analyze:** ⚠️ `POST /api/incidents/analyze` construye manualmente un dict y lo envuelve en `JSONResponse`. Sería más mantenible y autodocumentado con un modelo `AnalysisResponse`.
+**Endpoint analyze:** ✅ Se creó el modelo `AnalysisResponse` y el endpoint ahora declara `response_model=AnalysisResponse`. El `summary` se tipa como `dict[str, object]` porque la estructura devuelta por `result_to_summary_dict()` (totals, categories, statuses, satisfaction) no coincide con `IncidentSummary`.
 
 **Esquemas de entrada:** ✅ `IncidentCreate` usa `extra="forbid"` para rechazar campos inesperados. `IncidentStatusUpdate` también usa `extra="forbid"`. Correcto.
 
@@ -146,7 +146,7 @@ La API se encuentra en un estado **avanzado de serialización**. La mayoría de 
 | 22 | `/api/incidents/health` | GET | ✅ | `dict` | Aceptable |
 | 23 | `/api/incidents/{incident_id}/status` | PATCH | ✅ | `IncidentResponse` | |
 | 24 | `/api/incidents/{incident_id}` | GET | ✅ | `IncidentResponse` | |
-| 25 | `/api/incidents/analyze` | POST | ⚠️ | `JSONResponse` (dict) | Sin modelo Pydantic de respuesta |
+| 25 | `/api/incidents/analyze` | POST | ✅ | `AnalysisResponse` | Modelo Pydantic creado |
 | 26 | `/api/incidents/results/export` | GET | ✅ | `Response` (CSV) | Aceptable |
 | 27 | `/inventory/products` | GET | ✅ | `list[AssetResponse]` | |
 | 28 | `/inventory/products` | POST | ✅ | `AssetResponse` | |
@@ -186,19 +186,38 @@ Todos los endpoints `DELETE` retornan `{"message": "..."}` como `dict[str, str]`
 - Los endpoints de escritura usan esquemas de entrada dedicados con `extra="forbid"` donde corresponde.
 
 ### ⚠️ Oportunidades de mejora
-1. **`GET /suppliers`** → Crear `SupplierListItem` ligero (sin `notes`, `updated_at`, `contract_renewal_date`) para el listado.
-2. **`GET /api/incidents`** → Crear `IncidentListItem` ligero (sin `description`) para el listado.
-3. **`POST /api/incidents/analyze`** → Definir un modelo `AnalysisResponse` Pydantic en lugar de devolver un dict sin tipar.
+1. **`GET /suppliers`** → Crear `SupplierListItem` ligero (sin `notes`, `updated_at`, `contract_renewal_date`) para el listado. *(Excluido por decisión del proyecto)*
+2. **`GET /api/incidents`** → Crear `IncidentListItem` ligero (sin `description`) para el listado. *(Excluido por decisión del proyecto)*
+3. **`POST /api/incidents/analyze`** → ✅ **COMPLETADO** — Se creó `AnalysisResponse` Pydantic con `response_model` declarado en el endpoint.
 
 ---
 
-## Recomendaciones para Fase 2 (Implementación)
+## Autorización sobre los puntos que se van a llevar a implementación  
 
-1. Crear `SupplierListItem` en `services/api/models.py` con solo: `id`, `name`, `country`, `categories`, `monthly_rate`, `currency`, `status`.
-2. Crear `IncidentListItem` en `services/api/models.py` con solo: `id`, `title`, `category`, `status`, `origin`, `branch`, `created_at`, `updated_at`.
-3. Crear `AnalysisResponse` en `services/api/models.py` con: `message: str`, `source_file: str`, `summary: IncidentSummary`.
-4. Aplicar los esquemas ligeros a los endpoints de listado correspondientes.
-5. Verificar que los tests existentes siguen pasando tras los cambios.
+Se excluyen los puntos 1 y 2 de la implementación, considerando que habría que generar un nuevo endpoint para ver completos los datos de proveedores e incidencias ya que actualmente no existe una opción para ver el detalle de proveedor o de la incidencia y no vale la pena incluirlas.
+
+Se aprueba solamente la implementación del punto 3 que indica:
+Crear `AnalysisResponse` en `services/api/models.py` con: `message: str`, `source_file: str`, `summary: IncidentSummary`.
+
+Luego, se debe Verificar que los tests existentes siguen pasando tras los cambios y que todo el repositorio sigue funcionando correctamente, incluyendo la revisión del docker.
+
+
+## Implementación completada (Fase 2)
+
+### ✅ Implementado: `AnalysisResponse` para `POST /api/incidents/analyze`
+
+1. **Modelo Pydantic creado** en `services/api/models.py`:
+   ```python
+   class AnalysisResponse(BaseModel):
+       message: str
+       source_file: str
+       summary: dict[str, object]
+   ```
+   > Nota: Se usó `dict[str, object]` en lugar de `IncidentSummary` porque la estructura del dict devuelto por `result_to_summary_dict()` (totals, categories, statuses, satisfaction) es diferente a `IncidentSummary` (total, by_status, by_category, by_origin, by_branch). Usar `IncidentSummary` habría causado un error de validación Pydantic en runtime.
+
+2. **Endpoint actualizado** en `services/api/routes/incidents.py`:
+   - Añadido `response_model=AnalysisResponse` al decorador.
+   - La función ahora retorna `AnalysisResponse` directamente en lugar de `JSONResponse(dict)`.
 
 ---
 
@@ -215,15 +234,29 @@ Se verificó específicamente que:
 
 ---
 
-## Autorización sobre los puntos que se van a llevar a implementación  
+## Fase 3 - Verificación
 
-Se excluyen los puntos 1 y 2 de la implementación, considerando que habría que generar un nuevo endpoint para ver completos los datos de proveedores e incidencias ya que actualmente no existe una opción para ver el detalle de proveedor o de la incidencia y no vale la pena incluirlas.
+**Tests verificados**: 127 tests pasan sin regresiones.
 
-Se aprueba solamente la implementación del punto 3 que indica:
-Crear `AnalysisResponse` en `services/api/models.py` con: `message: str`, `source_file: str`, `summary: IncidentSummary`.
-
-Luego, se debe Verificar que los tests existentes siguen pasando tras los cambios y que todo el repositorio sigue funcionando correctamente, incluyendo la revisión del docker.
-
+### ❌ Excluidos por decisión del proyecto
+- `SupplierListItem` para `GET /suppliers` (punto 1)
+- `IncidentListItem` para `GET /api/incidents` (punto 2)
 ---
 
-*Auditoría generada como parte del Hito 11 — Backend Serialization Audit.*
+## Pruebas manuales de los endpoints
+
+1. Creación de un usuario
+   
+   ![alt Se aprecia la respuesta satisfactoria a la creación del usuario](image-serialization-01.png)
+
+2. Obtener token de login
+
+![alt Se aprecia el token recibido como respuesta](image-serialization-02.png)
+
+
+3. Probar el analyze endpoint (reemplazamos <TOKEN> con el que obtuvimos anteriormente)
+
+![alt Se pasó el token recibido en el login. Analisis ejecutado correctamente](image-serialization-03.png)
+
+
+*Auditoría generada como parte del Sin Hito 11 — Backend Serialization Audit.*
