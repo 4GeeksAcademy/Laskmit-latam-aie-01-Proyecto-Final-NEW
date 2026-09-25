@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 import sys
@@ -10,8 +12,10 @@ from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel
 
 try:
+    from services.api.cache import invalidate_cache
     from services.api.database import engine as supabase_engine
 except ModuleNotFoundError:
+    from cache import invalidate_cache  # type: ignore[no-redef]
     from database import engine as supabase_engine  # type: ignore[no-redef]
 
 try:
@@ -42,7 +46,10 @@ except ModuleNotFoundError:
 try:
     from services.api.routers.inventory import router as inventory_router
 except ModuleNotFoundError:
-    from routers.inventory import router as inventory_router  # type: ignore[no-redef]  # type: ignore[no-redef]
+    from routers.inventory import router as inventory_router  # type: ignore[no-redef]
+
+
+logger = logging.getLogger("api.timing")
 
 
 @asynccontextmanager
@@ -73,6 +80,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Middleware de timing (diagnóstico de latencias) ────────────────
+@app.middleware("http")
+async def timing_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration = (time.perf_counter() - start) * 1000
+    logger.info(f"{request.method} {request.url.path} → {response.status_code} | {duration:.1f}ms")
+    return response
 
 app.include_router(suppliers_router)
 app.include_router(incidents_router)

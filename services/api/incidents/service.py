@@ -5,8 +5,21 @@ from datetime import datetime, timezone
 from tinydb.table import Document
 
 try:
+    from services.api.cache import cached, invalidate_cache
     from services.api.database import get_incidents_table
     from services.api.models import (
+        IncidentBranch,
+        IncidentCategory,
+        IncidentCreate,
+        IncidentOrigin,
+        IncidentResponse,
+        IncidentStatus,
+        IncidentSummary,
+    )
+except ModuleNotFoundError:
+    from cache import cached, invalidate_cache  # type: ignore[no-redef]
+    from database import get_incidents_table
+    from models import (
         IncidentBranch,
         IncidentCategory,
         IncidentCreate,
@@ -55,6 +68,10 @@ def create_incident(incident: IncidentCreate) -> IncidentResponse:
     created = incidents.get(doc_id=incident_id)
     if created is None:
         raise RuntimeError("Incident could not be created.")
+
+    # Invalidar resumen cacheado
+    invalidate_cache("get_incident_summary")
+
     return _to_response(created)
 
 
@@ -102,9 +119,14 @@ def update_incident_status(incident_id: int, new_status: IncidentStatus) -> Inci
     updated = incidents.get(doc_id=incident_id)
     if updated is None:
         raise RuntimeError("Incident could not be updated.")
+
+    # Invalidar resumen cacheado
+    invalidate_cache("get_incident_summary")
+
     return _to_response(updated)
 
 
+@cached(ttl_seconds=60)
 def get_incident_summary() -> IncidentSummary:
     by_status = {value: 0 for value in IncidentStatus}
     by_category = {value: 0 for value in IncidentCategory}
