@@ -11,6 +11,7 @@ from tinydb.storages import MemoryStorage
 
 from services.api.auth import dependencies as auth_deps
 from services.api.auth import services as auth_services
+from services.api.cache import invalidate_cache
 from services.api.main import app
 
 
@@ -106,6 +107,14 @@ def user_headers(user_token: str) -> dict[str, str]:
 def admin_headers(admin_token: str) -> dict[str, str]:
     """Headers Authorization para el usuario admin."""
     return {"Authorization": f"Bearer {admin_token}"}
+
+
+# ── Limpiar caché entre tests ──────────────────────────────────────
+@pytest.fixture(autouse=True)
+def _clear_cache() -> Generator[None, None, None]:
+    """Limpia la caché en memoria antes de cada test para evitar contaminación."""
+    invalidate_cache()
+    yield
 
 
 # ──────────────────────────────────────────────

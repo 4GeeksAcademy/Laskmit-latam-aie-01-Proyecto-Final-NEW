@@ -6,6 +6,7 @@ from sqlmodel import Session, select, func
 
 try:
     from services.api.auth.dependencies import get_current_user
+    from services.api.cache import cached, invalidate_cache
     from services.api.database import get_supabase_db
     from services.api.models import Asset, AssetEntry, AssetExit
     from services.api.schemas import (
@@ -19,6 +20,7 @@ try:
     )
 except ModuleNotFoundError:
     from auth.dependencies import get_current_user  # type: ignore[no-redef]
+    from cache import cached, invalidate_cache  # type: ignore[no-redef]
     from database import get_supabase_db  # type: ignore[no-redef]
     from models import Asset, AssetEntry, AssetExit  # type: ignore[no-redef]
     from schemas import (  # type: ignore[no-redef]
@@ -58,8 +60,9 @@ def _compute_stock(asset_id: int, office: str, db: Session) -> int:
 
 
 @router.get("/products", response_model=list[AssetResponse])
+@cached(ttl_seconds=30)
 def list_products(db: Session = Depends(get_supabase_db)):
-    """Lista todos los activos con current_stock calculado."""
+    """Lista todos los activos con current_stock calculado (cacheado 30s)."""
     assets = db.exec(select(Asset)).all()
     result = []
     for asset in assets:
@@ -166,6 +169,9 @@ def create_inbound_order(
     db.commit()
     db.refresh(entry)
 
+    # Invalidar caché de listado de productos
+    invalidate_cache("list_products")
+
     return AssetEntryResponse(
         id=entry.id,
         asset_id=entry.asset_id,
@@ -224,6 +230,9 @@ def create_outbound_order(
     db.add(exit_order)
     db.commit()
     db.refresh(exit_order)
+
+    # Invalidar caché de listado de productos
+    invalidate_cache("list_products")
 
     return AssetExitResponse(
         id=exit_order.id,

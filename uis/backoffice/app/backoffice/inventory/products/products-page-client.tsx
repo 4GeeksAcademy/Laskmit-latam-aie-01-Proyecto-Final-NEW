@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getProducts } from "../../../../lib/inventory";
 import { getErrorMessage } from "../../../../lib/api-client";
@@ -31,6 +31,11 @@ export function ProductsPageClient() {
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Memorizar clases de stock para evitar recalcular en cada render
+  const stockLevels = useMemo(() => {
+    return new Map(products.map((p) => [p.id, stockLevelClass(p.current_stock)]));
+  }, [products]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -115,7 +120,7 @@ export function ProductsPageClient() {
                 <td className={styles.meta}>{product.sku}</td>
                 <td>{CATEGORY_LABELS[product.category] ?? product.category}</td>
                 <td>{product.office}</td>
-                <td className={stockLevelClass(product.current_stock)}>
+                <td className={stockLevels.get(product.id) ?? ""}>
                   {product.current_stock}
                 </td>
                 <td>

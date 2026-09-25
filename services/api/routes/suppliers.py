@@ -17,6 +17,7 @@ try:
         SupplierStatusUpdate,
     )
     from services.api.auth import dependencies as auth_deps
+    from services.api.cache import cached, invalidate_cache
 except ModuleNotFoundError:
     from database import get_suppliers_table
     from models import (
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
         SupplierStatusUpdate,
     )
     from auth import dependencies as auth_deps  # type: ignore[no-redef]
+    from cache import cached, invalidate_cache  # type: ignore[no-redef]
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
 
@@ -53,10 +55,14 @@ def create_supplier(supplier: SupplierCreate, current_user: Document = Depends(a
     if created_doc is None:
         raise HTTPException(status_code=500, detail="Failed to create supplier.")
 
+    # Invalidar caché de listado de proveedores
+    invalidate_cache("list_suppliers")
+
     return _to_response(created_doc)
 
 
 @router.get("", response_model=list[SupplierResponse])
+@cached(ttl_seconds=120)
 def list_suppliers(
     country: SupplierCountry | None = Query(default=None),
     category: SupplierCategory | None = Query(default=None),
@@ -111,6 +117,9 @@ def update_supplier_rate(supplier_id: int, payload: SupplierRateUpdate, current_
     if updated is None:
         raise HTTPException(status_code=500, detail="Failed to update supplier rate.")
 
+    # Invalidar caché de listado de proveedores
+    invalidate_cache("list_suppliers")
+
     return _to_response(updated)
 
 
@@ -134,6 +143,9 @@ def update_supplier_status(supplier_id: int, payload: SupplierStatusUpdate, curr
     if updated is None:
         raise HTTPException(status_code=500, detail="Failed to update supplier status.")
 
+    # Invalidar caché de listado de proveedores
+    invalidate_cache("list_suppliers")
+
     return _to_response(updated)
 
 
@@ -147,4 +159,8 @@ def delete_supplier(supplier_id: int, current_user: Document = Depends(auth_deps
         raise HTTPException(status_code=404, detail="Supplier not found.")
 
     suppliers_table.remove(doc_ids=[supplier_id])
+
+    # Invalidar caché de listado de proveedores
+    invalidate_cache("list_suppliers")
+
     return {"message": "Supplier deleted."}

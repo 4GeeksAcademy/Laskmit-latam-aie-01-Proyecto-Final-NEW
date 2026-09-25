@@ -10,11 +10,13 @@ from tinydb.storages import MemoryStorage
 
 from scripts.seed_incidents import seed_incidents
 from services.api.auth import dependencies as auth_dependencies
+from services.api.cache import invalidate_cache
 from services.api.main import app
 
 
 class IncidentManagerTest(unittest.TestCase):
     def setUp(self) -> None:
+        invalidate_cache()
         self.db = TinyDB(storage=MemoryStorage)
         self.incidents = self.db.table("incidents")
         self.seed_keys = self.db.table("incident_seed_keys")
