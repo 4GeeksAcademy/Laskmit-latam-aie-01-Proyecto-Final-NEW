@@ -1,0 +1,1037 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nexova Telemetry Event Schemas",
+  "description": "Catálogo completo de esquemas de eventos de telemetría para Nexova Operations. Cada evento define su event_type, descripción, allowlist de properties, metadata de clasificación y estrategia de entrega.",
+  "version": "1.0",
+  "eventEnvelope": {
+    "type": "object",
+    "required": ["eventId", "timestamp", "sessionId", "userId", "event_type", "schemaVersion", "requestId", "properties"],
+    "properties": {
+      "eventId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Identificador único del evento (UUID v4). Se genera en el punto de emisión."
+      },
+      "timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Momento exacto en que ocurrió el evento en formato ISO 8601 (UTC)."
+      },
+      "sessionId": {
+        "type": ["string", "null"],
+        "format": "uuid",
+        "description": "Identificador de la sesión del usuario. null en eventos batch o sin sesión."
+      },
+      "userId": {
+        "type": ["string", "null"],
+        "description": "Identificador del usuario que disparó el evento. null si no hay usuario autenticado."
+      },
+      "event_type": {
+        "type": "string",
+        "pattern": "^[a-z]+_[a-z]+$",
+        "description": "Tipo de evento en formato entidad_accion con verbos en pasado."
+      },
+      "schemaVersion": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+$",
+        "description": "Versión del esquema del evento (semver). Actual: 1.0."
+      },
+      "requestId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Identificador de correlación para unir frontend-backend-logs."
+      },
+      "properties": {
+        "type": "object",
+        "description": "Payload específico del evento. Solo se permiten las claves definidas en el allowlist de cada evento."
+      }
+    }
+  },
+  "events": [
+    {
+      "event_type": "inbound_order_created",
+      "classification": "obligatorio",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "Se registra una orden de entrada de material desde un proveedor.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "quantity", "unit_cost", "currency", "supplier", "order_id"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"],
+            "description": "Oficina donde ocurre la operación."
+          },
+          "product_id": {
+            "type": "integer",
+            "description": "ID del producto en la base de datos."
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"],
+            "description": "Categoría del producto."
+          },
+          "programme_id": {
+            "type": "string",
+            "description": "Identificador del programa de formación."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cantidad de unidades recibidas."
+          },
+          "unit_cost": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Costo unitario del material en la moneda de la oficina."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"],
+            "description": "Moneda de la oficina. EUR para Valencia, USD para Miami."
+          },
+          "supplier": {
+            "type": "string",
+            "description": "Nombre del proveedor."
+          },
+          "order_id": {
+            "type": "integer",
+            "description": "ID de la orden de entrada en base de datos."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "outbound_order_created",
+      "classification": "obligatorio",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "Se entrega un kit o certificado a un cliente, candidato, consultor o agente.",
+      "sensitiveData": true,
+      "piiStrategy": "El campo assigned_to contiene un ID interno, no un nombre ni email. No se capturan datos personales.",
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "quantity", "currency", "exit_type", "assigned_to", "order_id"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"],
+            "description": "Oficina donde ocurre la operación."
+          },
+          "product_id": {
+            "type": "integer",
+            "description": "ID del producto."
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"],
+            "description": "Categoría del producto."
+          },
+          "programme_id": {
+            "type": "string",
+            "description": "Identificador del programa de formación."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cantidad entregada."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"],
+            "description": "Moneda de la oficina."
+          },
+          "exit_type": {
+            "type": "string",
+            "enum": ["allocation", "consumption"],
+            "description": "Tipo de salida."
+          },
+          "assigned_to": {
+            "type": ["string", "null"],
+            "description": "ID interno de la persona asignada (solo si exit_type es allocation)."
+          },
+          "order_id": {
+            "type": "integer",
+            "description": "ID de la orden de salida en base de datos."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "stock_threshold_triggered",
+      "classification": "obligatorio",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "El stock de un ítem cae por debajo del mínimo configurado.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "quantity", "currency", "threshold_minimum", "current_stock"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"],
+            "description": "Oficina."
+          },
+          "product_id": {
+            "type": "integer",
+            "description": "ID del producto."
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"],
+            "description": "Categoría del producto."
+          },
+          "programme_id": {
+            "type": "string",
+            "description": "Programa asociado."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Cantidad actual tras la operación."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"],
+            "description": "Moneda."
+          },
+          "threshold_minimum": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Umbral mínimo configurado para ese producto."
+          },
+          "current_stock": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Stock actual del producto en la oficina."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "direct_stock_edit_rejected",
+      "classification": "obligatorio",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "Un usuario intenta modificar el stock directamente (fuera de una orden) y el sistema lo rechaza.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "quantity", "currency", "reason", "user_role"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"],
+            "description": "Oficina."
+          },
+          "product_id": {
+            "type": "integer",
+            "description": "ID del producto."
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"],
+            "description": "Categoría del producto."
+          },
+          "programme_id": {
+            "type": "string",
+            "description": "Programa asociado."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Cantidad que se intentó modificar."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"],
+            "description": "Moneda."
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["direct_stock_edit_attempt"],
+            "description": "Razón del rechazo."
+          },
+          "user_role": {
+            "type": "string",
+            "description": "Rol del usuario que intentó la operación."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "kit_cost_variance_detected",
+      "classification": "obligatorio",
+      "category": "negocio/inventario",
+      "delivery": "batch",
+      "deliveryJustification": "La decisión de renegociar con proveedores no es urgente en segundos; un informe diario es suficiente.",
+      "description": "El costo unitario de una orden de entrada varía más de un umbral (ej. 10%) respecto al histórico del mismo material/proveedor.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "quantity", "currency", "historical_avg_cost", "new_unit_cost", "variance_pct", "supplier", "threshold_pct"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          },
+          "product_id": {
+            "type": "integer"
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"]
+          },
+          "programme_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"]
+          },
+          "historical_avg_cost": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Costo unitario histórico promedio."
+          },
+          "new_unit_cost": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Nuevo costo unitario registrado."
+          },
+          "variance_pct": {
+            "type": "number",
+            "description": "Porcentaje de variación ((new - historical) / historical * 100)."
+          },
+          "supplier": {
+            "type": "string",
+            "description": "Nombre del proveedor."
+          },
+          "threshold_pct": {
+            "type": "number",
+            "description": "Umbral de variación configurado (ej. 10.0)."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "product_created",
+      "classification": "identificado",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "Un usuario autenticado crea un nuevo producto/activo en el catálogo de inventario.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_name", "product_category", "sku"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          },
+          "product_id": {
+            "type": "integer"
+          },
+          "product_name": {
+            "type": "string",
+            "description": "Nombre del producto."
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"]
+          },
+          "sku": {
+            "type": "string",
+            "description": "SKU único del producto."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "product_viewed",
+      "classification": "identificado",
+      "category": "negocio/inventario",
+      "delivery": "batch",
+      "deliveryJustification": "Dato analítico agregado sin decisión urgente asociada a una vista individual.",
+      "description": "Un usuario consulta el detalle de un producto específico en el backoffice.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["product_id", "product_category", "office"],
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"]
+          },
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          }
+        }
+      }
+    },
+    {
+      "event_type": "insufficient_stock_rejected",
+      "classification": "identificado",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "El sistema rechaza una orden de salida porque el stock disponible es menor que la cantidad solicitada.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "quantity_requested", "quantity_available", "currency"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          },
+          "product_id": {
+            "type": "integer"
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"]
+          },
+          "programme_id": {
+            "type": "string"
+          },
+          "quantity_requested": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cantidad solicitada."
+          },
+          "quantity_available": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Stock disponible en el momento."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"]
+          }
+        }
+      }
+    },
+    {
+      "event_type": "order_office_mismatch_rejected",
+      "classification": "identificado",
+      "category": "negocio/inventario",
+      "delivery": "stream",
+      "description": "El sistema rechaza una orden porque la oficina de la orden no coincide con la oficina del producto.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["product_id", "product_name", "order_office", "product_office", "order_type"],
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "order_office": {
+            "type": "string",
+            "enum": ["valencia", "miami"],
+            "description": "Oficina indicada en la orden."
+          },
+          "product_office": {
+            "type": "string",
+            "enum": ["valencia", "miami"],
+            "description": "Oficina real del producto."
+          },
+          "order_type": {
+            "type": "string",
+            "enum": ["inbound", "outbound"]
+          }
+        }
+      }
+    },
+    {
+      "event_type": "inventory_stock_daily_snapshot",
+      "classification": "identificado",
+      "category": "negocio/inventario",
+      "delivery": "batch",
+      "deliveryJustification": "Snapshot programado. Su valor está en la serie histórica, no en tiempo real.",
+      "description": "Captura diaria del nivel de stock de cada producto por oficina.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["office", "product_id", "product_category", "programme_id", "stock_level", "currency", "snapshot_date"],
+        "properties": {
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          },
+          "product_id": {
+            "type": "integer"
+          },
+          "product_category": {
+            "type": "string",
+            "enum": ["training_kit", "certification", "onboarding_equipment"]
+          },
+          "programme_id": {
+            "type": "string"
+          },
+          "stock_level": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Nivel de stock al momento del snapshot."
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["EUR", "USD"]
+          },
+          "snapshot_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha del snapshot en formato YYYY-MM-DD."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_login_attempted",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "stream",
+      "description": "Un usuario envía credenciales en el formulario de inicio de sesión.",
+      "sensitiveData": true,
+      "piiStrategy": "Email anonimizado extrayendo solo el dominio. IP anonimizada (último octeto a 0).",
+      "properties": {
+        "type": "object",
+        "required": ["email_domain", "ip_address"],
+        "properties": {
+          "email_domain": {
+            "type": "string",
+            "description": "Dominio del email usado en el intento. No se almacena el email completo."
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "Dirección IP anonimizada (último octeto a 0)."
+          },
+          "user_agent": {
+            "type": "string",
+            "description": "User-Agent del navegador (opcional)."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_login_failed",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "stream",
+      "description": "El sistema rechaza un intento de login por credenciales inválidas.",
+      "sensitiveData": true,
+      "piiStrategy": "Email anonimizado a dominio. IP anonimizada (último octeto a 0).",
+      "properties": {
+        "type": "object",
+        "required": ["email_domain", "ip_address", "failure_reason"],
+        "properties": {
+          "email_domain": {
+            "type": "string",
+            "description": "Dominio del email (anonimizado)."
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP anonimizada."
+          },
+          "failure_reason": {
+            "type": "string",
+            "enum": ["invalid_credentials", "user_inactive", "account_locked"],
+            "description": "Razón del fallo."
+          },
+          "consecutive_failures": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Número de fallos consecutivos desde esa IP en la ventana actual (opcional)."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_login_succeeded",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "batch",
+      "deliveryJustification": "No hay urgencia operativa; se usa para informes de adopción y auditoría.",
+      "description": "El sistema valida credenciales y emite un token JWT.",
+      "sensitiveData": true,
+      "piiStrategy": "No se almacena el email completo. Solo dominio y rol.",
+      "properties": {
+        "type": "object",
+        "required": ["email_domain", "ip_address", "user_role"],
+        "properties": {
+          "email_domain": {
+            "type": "string",
+            "description": "Dominio del email (anonimizado)."
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP anonimizada."
+          },
+          "user_role": {
+            "type": "string",
+            "enum": ["admin", "operator"],
+            "description": "Rol del usuario."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_session_expired",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "batch",
+      "deliveryJustification": "Métrica de UX sin requerir acción inmediata; seguimiento agregado.",
+      "description": "Un token JWT expira y el usuario es redirigido a login o recibe un 401.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["session_duration_minutes", "user_role", "expired_action"],
+        "properties": {
+          "session_duration_minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Tiempo que duró la sesión expirada."
+          },
+          "user_role": {
+            "type": ["string", "null"],
+            "description": "Rol del usuario (puede ser null si el token ya expiró)."
+          },
+          "expired_action": {
+            "type": "string",
+            "description": "Acción que el usuario intentaba realizar cuando expiró la sesión."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_password_changed",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "stream",
+      "description": "Un usuario cambia su contraseña correctamente desde el backoffice.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["user_role", "change_source"],
+        "properties": {
+          "user_role": {
+            "type": "string",
+            "description": "Rol del usuario."
+          },
+          "change_source": {
+            "type": "string",
+            "enum": ["voluntary", "forced"],
+            "description": "Origen del cambio: voluntary o forced."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_password_reset_requested",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "stream",
+      "description": "Un usuario solicita un enlace de restablecimiento de contraseña.",
+      "sensitiveData": true,
+      "piiStrategy": "Email anonimizado a dominio. IP anonimizada.",
+      "properties": {
+        "type": "object",
+        "required": ["email_domain", "ip_address"],
+        "properties": {
+          "email_domain": {
+            "type": "string",
+            "description": "Dominio del email (anonimizado)."
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP anonimizada."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "auth_password_reset_completed",
+      "classification": "identificado",
+      "category": "autenticacion",
+      "delivery": "batch",
+      "deliveryJustification": "No requiere acción inmediata; mide tasa de conversión del flujo de reseteo.",
+      "description": "Un usuario completa el restablecimiento de contraseña usando un token válido.",
+      "sensitiveData": true,
+      "piiStrategy": "Email anonimizado a dominio. IP anonimizada.",
+      "properties": {
+        "type": "object",
+        "required": ["email_domain", "token_valid", "ip_address"],
+        "properties": {
+          "email_domain": {
+            "type": "string",
+            "description": "Dominio del email (anonimizado)."
+          },
+          "token_valid": {
+            "type": "boolean",
+            "description": "true si el token era válido, false si estaba expirado o ya usado."
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP anonimizada."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "performance_api_latency_recorded",
+      "classification": "identificado",
+      "category": "rendimiento",
+      "delivery": "stream",
+      "deliveryJustification": "Sampleado al 10%. La latencia necesita monitoreo en tiempo real para detectar degradaciones.",
+      "description": "Un endpoint de la API completa su ejecución (medido desde el middleware de timing).",
+      "sensitiveData": false,
+      "piiStrategy": "Las rutas se normalizan: /inventory/products/42 → /inventory/products/{id}.",
+      "properties": {
+        "type": "object",
+        "required": ["endpoint", "method", "status_code", "duration_ms", "user_id"],
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Ruta del endpoint normalizada (sin parámetros de ruta concretos)."
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            "description": "Método HTTP."
+          },
+          "status_code": {
+            "type": "integer",
+            "description": "Código de estado HTTP de la respuesta."
+          },
+          "duration_ms": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Duración de la petición en milisegundos."
+          },
+          "user_id": {
+            "type": ["integer", "null"],
+            "description": "ID del usuario si está autenticado."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "performance_db_query_latency",
+      "classification": "identificado",
+      "category": "rendimiento",
+      "delivery": "stream",
+      "deliveryJustification": "Solo se dispara al superar un umbral; cada ocurrencia merece atención inmediata.",
+      "description": "Una consulta a Supabase (SQLModel) supera un umbral de duración.",
+      "sensitiveData": false,
+      "piiStrategy": "No se incluye el texto SQL ni valores de parámetros.",
+      "properties": {
+        "type": "object",
+        "required": ["query_operation", "table", "duration_ms", "threshold_ms", "endpoint"],
+        "properties": {
+          "query_operation": {
+            "type": "string",
+            "enum": ["select", "insert", "update", "delete"],
+            "description": "Tipo de operación."
+          },
+          "table": {
+            "type": "string",
+            "description": "Tabla consultada."
+          },
+          "duration_ms": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Duración de la consulta en milisegundos."
+          },
+          "threshold_ms": {
+            "type": "integer",
+            "description": "Umbral que se superó para registrar este evento."
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Endpoint que originó la consulta."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "performance_endpoint_error_rate",
+      "classification": "identificado",
+      "category": "rendimiento",
+      "delivery": "stream",
+      "description": "Un endpoint supera un umbral de tasa de error (>5% de respuestas 5xx en 5 minutos).",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["endpoint", "method", "window_minutes", "total_requests", "error_count", "error_rate_pct"],
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "method": {
+            "type":"string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          },
+          "window_minutes": {
+            "type": "integer",
+            "description": "Ventana de tiempo evaluada."
+          },
+          "total_requests": {
+            "type": "integer",
+            "description": "Total de peticiones en la ventana."
+          },
+          "error_count": {
+            "type": "integer",
+            "description": "Número de respuests 5xx."
+          },
+          "error_rate_pct": {
+            "type": "number",
+            "description": "Porcentaje de error."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "error_frontend_unhandled",
+      "classification": "identificado",
+      "category": "errores",
+      "delivery": "stream",
+      "deliveryJustification": "Sampleado al 25% a alto volumen. Los errores de frontend necesitan visibilidad rápida.",
+      "description": "Ocurre una excepción no capturada en el frontend Next.js.",
+      "sensitiveData": true,
+      "piiStrategy": "URL sanitizada eliminando query params. Mensaje de error revisado para eliminar datos personales.",
+      "properties": {
+        "type": "object",
+        "required": ["error_message", "error_type", "component", "url", "section"],
+        "properties": {
+          "error_message": {
+            "type": "string",
+            "description": "Mensaje de error sanitizado (sin trazas de stack)."
+          },
+          "error_type": {
+            "type": "string",
+            "description": "Tipo de error."
+          },
+          "component": {
+            "type": ["string", "null"],
+            "description": "Nombre del componente de React donde ocurrió el error."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL de la página (solo path, sin query params)."
+          },
+          "section": {
+            "type": "string",
+            "description": "Sección del backoffice."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "error_api_validation_failure",
+      "classification": "identificado",
+      "category": "errores",
+      "delivery": "batch",
+      "deliveryJustification": "Errores esperados del flujo normal; no requieren acción inmediata.",
+      "description": "El backend rechaza una petición por error de validación (422).",
+      "sensitiveData": false,
+      "piiStrategy": "No se incluye el valor enviado por el usuario, solo campo y tipo de error.",
+      "properties": {
+        "type": "object",
+        "required": ["endpoint", "method", "field", "validation_type", "error_detail"],
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          },
+          "field": {
+            "type": ["string", "null"],
+            "description": "Campo que falló la validación."
+          },
+          "validation_type": {
+            "type": "string",
+            "enum": ["required", "type_error", "business_rule"],
+            "description": "Tipo de validación."
+          },
+          "error_detail": {
+            "type": "string",
+            "description": "Descripción del error."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "error_api_exception",
+      "classification": "identificado",
+      "category": "errores",
+      "delivery": "stream",
+      "description": "El backend lanza una excepción no controlada (500).",
+      "sensitiveData": true,
+      "piiStrategy": "La traza completa no se incluye. Solo se usa error_group para agrupar ocurrencias similares.",
+      "properties": {
+        "type": "object",
+        "required": ["endpoint", "method", "status_code", "exception_class", "error_group"],
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          },
+          "status_code": {
+            "type": "integer"
+          },
+          "exception_class": {
+            "type": "string"
+          },
+          "error_group": {
+            "type": "string",
+            "description": "Agrupación del error (primeros 100 caracteres normalizados)."
+          }
+        }
+      }
+    },
+    {
+      "event_type": "navigation_section_entered",
+      "classification": "identificado",
+      "category": "navegacion",
+      "delivery": "batch",
+      "deliveryJustification": "Puramente analítico; no hay decisión que tomar en segundos.",
+      "description": "Un operador navega a una sección del backoffice.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["section", "referrer_section", "user_role"],
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Sección del backoffice."
+          },
+          "referrer_section": {
+            "type": ["string", "null"],
+            "description": "Sección desde la que se navegó."
+          },
+          "user_role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "event_type": "navigation_order_flow_started",
+      "classification": "identificado",
+      "category": "navegacion",
+      "delivery": "stream",
+      "description": "Un operador inicia el flujo de creacion de una orden.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["order_type", "office", "user_role"],
+        "properties": {
+          "order_type": {
+            "type": "string",
+            "enum": ["inbound", "outbound"]
+          },
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          },
+          "user_role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "event_type": "navigation_order_flow_abandoned",
+      "classification": "identificado",
+      "category": "navegacion",
+      "delivery": "stream",
+      "description": "Un operador inicia el flujo de orden pero no lo completa.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["order_type", "office", "time_spent_seconds", "last_step", "user_role"],
+        "properties": {
+          "order_type": {
+            "type": "string",
+            "enum": ["inbound", "outbound"]
+          },
+          "office": {
+            "type": "string",
+            "enum": ["valencia", "miami"]
+          },
+          "time_spent_seconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_step": {
+            "type": "string",
+            "enum": ["product_selected", "quantity_entered", "confirmation"]
+          },
+          "user_role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "event_type": "navigation_feature_toggled",
+      "classification": "identificado",
+      "category": "navegacion",
+      "delivery": "batch",
+      "deliveryJustification": "Analítico; sirve para informes semanales de uso de funcionalidades.",
+      "description": "Un operador activa o desactiva una funcionalidad específica.",
+      "sensitiveData": false,
+      "piiStrategy": null,
+      "properties": {
+        "type": "object",
+        "required": ["feature", "action", "section", "user_role"],
+        "properties": {
+          "feature": {
+            "type": "string",
+            "description": "Identificador de la funcionalidad."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["enabled", "disabled"]
+          },
+          "section": {
+            "type": "string"
+          },
+          "user_role": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}
