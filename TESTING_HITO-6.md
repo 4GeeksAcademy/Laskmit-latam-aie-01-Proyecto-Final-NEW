@@ -10,16 +10,9 @@ Este documento detalla el plan de pruebas para el **Hito 6: Telemetría — Capt
 
 El backend de Nexova depende de Supabase para los endpoints de inventario. Durante las pruebas de la **Fase 1 y Fase 2** de este hito **no se necesita Supabase** — el stub de telemetría funciona de forma totalmente independiente.
 
-Para evitar que el servidor FastAPI falle al arrancar intentando conectar a Supabase, la variable `DATABASE_URL` en el archivo `.env` de la raíz está temporalmente **comentada**:
+Durante las pruebas, la variable `DATABASE_URL` en el archivo `.env` de la raíz estuvo temporalmente **comentada** para evitar que el servidor FastAPI fallara al arrancar intentando conectar a un tenant antiguo de Supabase (que había expirado).
 
-```bash
-# .env (raíz del repositorio)
-# DATABASE_URL=postgresql://postgres.zptpkvnhnfgyiwqixjre:...
-```
-
-Con esto, `supabase_engine = None` y el router de inventario simplemente no se incluye. El resto de la aplicación (telemetría, auth, suppliers, incidents) funciona con normalidad.
-
-> ⚠️ **Importante:** Al finalizar las pruebas del Hito 6, **hay que descomentar esta línea** para restaurar el funcionamiento del inventario y demás funcionalidades que dependen de Supabase.
+> ✅ **Actualizado:** `DATABASE_URL` ya fue descomentada con la nueva URL de Supabase proporcionada por el usuario. El backend arranca completo, incluyendo el router de inventario.
 
 ---
 
@@ -329,3 +322,141 @@ Durante las pruebas se detectó que los `event_type` del plan de telemetría usa
 | **Fase 2** | TelemetryService en frontend (cola local, batch+debounce, sendBeacon, backoff) | `uis/backoffice/lib/telemetry.ts` |
 | **Fase 3** | Instrumentación de métricas obligatorias + piso técnico transversal | `uis/backoffice/` (múltiples componentes) |
 | **Act. adicional** | Web Vitals + eventos de autenticación | `uis/backoffice/` |
+
+---
+
+## 📦 Fase 2 — TelemetryService en el frontend
+
+### 🎯 Objetivo
+
+Verificar que `uis/backoffice/lib/telemetry.ts` implementa correctamente:
+- Cola local de eventos
+- Batch + debounce (flush cada 10s o al llegar a 20 eventos)
+- Flush confiable con `navigator.sendBeacon` en `visibilitychange`
+- Reintentos con backoff exponencial (hasta 3 intentos)
+- Auto-generación de envelope fields (eventId, sessionId, userId, timestamp, schemaVersion, requestId)
+- Única función pública `track(eventType, properties)`
+- Lectura de URL desde `NEXT_PUBLIC_TELEMETRY_ENDPOINT`
+
+### 📄 Archivo creado
+
+```
+uis/backoffice/lib/telemetry.ts
+```
+
+### 🔧 Prerrequisitos
+
+1. Tener las dependencias instaladas:
+   ```bash
+   cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/uis/backoffice
+   npm install
+   ```
+
+2. El archivo de entorno debe contener:
+   ```
+   NEXT_PUBLIC_TELEMETRY_ENDPOINT=http://localhost:8000/telemetry/events
+   ```
+
+### 🧪 Cómo ejecutar los tests automáticos
+
+```bash
+cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/uis/backoffice
+npx jest __tests__/telemetry-service.test.ts --no-coverage
+```
+
+### 📊 Resultados de los tests automáticos (Fase 2)
+
+Los tests se ejecutaron con Jest + ts-jest en entorno jsdom.
+
+#### Resumen
+
+| Total | ✅ Pasados | ❌ Fallados |
+|-------|-----------|------------|
+| 12    | **12**     | **0**      |
+
+#### Detalle de cada prueba (T1–T12)
+
+| #  | Test                                                | Resultado | Verifica |
+|----|-----------------------------------------------------|-----------|----------|
+| T1 | `track()` agrega eventos y los envía tras 10s        | ✅        | Flush periódico funciona |
+| T2 | El evento contiene eventId, timestamp, sessionId, userId, schemaVersion, requestId y event_type | ✅ | Envelope completo auto-generado |
+| T3 | sessionId se genera y persiste en sessionStorage     | ✅        | Misma sesión = mismo sessionId |
+| T4 | userId se lee desde la sesión autenticada             | ✅        | Usuario autenticado correctamente detectado |
+| T5 | userId es null cuando no hay sesión                  | ✅        | Anónimo correctamente manejado |
+| T6 | Envía el lote inmediatamente al llegar a 20 eventos   | ✅        | Batch por tamaño máximo funciona |
+| T7 | Llama a sendBeacon cuando la página se esconde       | ✅        | Flush confiable implementado |
+| T8 | No llama a sendBeacon si la cola está vacía          | ✅        | No envía eventos vacíos |
+| T9 | Reintenta hasta 3 veces con backoff exponencial      | ✅        | Backoff y descarte funcionan |
+| T10| No reintenta si la respuesta es exitosa              | ✅        | Sin reintentos innecesarios |
+| T11| Acepta event_type con múltiples segmentos             | ✅        | Compatible con `inbound_order_created` |
+| T12| Usa NEXT_PUBLIC_TELEMETRY_ENDPOINT desde process.env  | ✅        | URL configurable por entorno |
+
+### 🧪 Prueba manual (opcional)
+
+Para verificar la integración real con el backend:
+
+1. **Arrancar el backend** (en una terminal):
+   ```bash
+   cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/services/api
+   uvicorn main:app --reload --port 8000
+   ```
+
+2. **Arrancar el frontend** (en otra terminal):
+   ```bash
+   cd /workspaces/Laskmit-latam-aie-01-Proyecto-Final-NEW/uis/backoffice
+   npm run dev
+   ```
+
+3. **Abrir el backoffice** en el navegador e interactuar (navegar, hacer login, etc.).
+
+4. **Verificar en la pestaña Network** de DevTools que aparecen requests a `http://localhost:8000/telemetry/events` con `POST` y body `{"events": [...]}`, respondiendo con `{"received": N}` y código **200**.
+
+5. **Cerrar la pestaña** — los eventos pendientes deben enviarse vía `sendBeacon` (no aparecen en Network, pero el backend los recibe igualmente).
+
+---
+
+## ✅ Checklist Fase 2 — Resultados
+
+| # | Criterio | Estado |
+|---|----------|--------|
+| 1 | TelemetryService implementa cola local (eventos se acumulan en arreglo en memoria) | ✅ |
+| 2 | Batch + debounce: flush cada 10s o al llegar a 20 eventos (lo que primero) | ✅ |
+| 3 | Flush confiable con `navigator.sendBeacon` en `visibilitychange` | ✅ |
+| 4 | Reintentos con backoff exponencial: hasta 3 intentos, luego descarta | ✅ |
+| 5 | Genera automáticamente eventId (UUID v4), timestamp (ISO 8601), schemaVersion ("1.0"), requestId (UUID v4) | ✅ |
+| 6 | sessionId generado al importar el módulo y persistido en sessionStorage | ✅ |
+| 7 | userId leído desde la sesión autenticada (getCachedSession) | ✅ |
+| 8 | Única función pública: `track(eventType: string, properties: Record<string, unknown>): void` | ✅ |
+| 9 | No hay llamadas directas a fetch/axios para telemetría fuera del TelemetryService | ✅ (no se han creado otras llamadas) |
+| 10 | URL del endpoint leída desde `NEXT_PUBLIC_TELEMETRY_ENDPOINT` | ✅ |
+| 11 | Sin regresiones: suite completa (87 tests) sigue pasando | ✅ |
+| 12 | TypeScript compila sin errores | ✅ |
+
+**Todos los criterios cumplidos.** 🎉
+
+---
+
+## ⚙️ Fase 2 — Notas técnicas
+
+### Estructura del archivo `lib/telemetry.ts`
+
+- **Constantes:** `SCHEMA_VERSION = "1.0"`, `FLUSH_INTERVAL_MS = 10_000`, `BATCH_MAX_SIZE = 20`, `MAX_RETRIES = 3`, `RETRY_BASE_DELAY_MS = 1_000`
+- **Interfaces exportadas:** `TelemetryEventPayload` (para uso en componentes que necesiten tipado)
+- **Estado interno:** `queue` (arreglo de eventos), `flushTimer`, `cachedSessionId`
+- **Funciones internas:**
+  - `generateUUID()` — UUID v4 via `crypto.randomUUID()` con fallback matemático
+  - `getOrCreateSessionId()` — recupera o crea sessionId, persistido en `sessionStorage`
+  - `getCurrentUserId()` — lee `getCachedSession()` y retorna email del usuario
+  - `sendBatch()` — envía lote con fetch + backoff (1s, 2s, 4s)
+  - `flushWithBeacon()` — envía cola con `navigator.sendBeacon` (para cierre de pestaña)
+  - `flush()` — vacía la cola y llama a `sendBatch()`
+  - `scheduleFlush()` — programa flush automático a los 10s
+  - `initVisibilityChangeHandler()` — registra listener de `visibilitychange`
+- **API pública:** `track(eventType, properties)`
+
+### Patrones seguidos
+
+- El módulo se inicializa automáticamente al importarse (registra el handler de `visibilitychange`)
+- No hay llamadas a fetch para telemetría fuera de `sendBatch()`
+- Los errores de red se registran con `console.error` y no afectan al llamante
+- El servicio no lanza excepciones — siempre es seguro llamar a `track()` desde cualquier componente
