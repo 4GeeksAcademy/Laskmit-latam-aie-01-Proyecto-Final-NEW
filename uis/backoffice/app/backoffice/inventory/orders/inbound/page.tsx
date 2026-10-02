@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { track } from "../../../../../lib/telemetry";
 import styles from "../../inventory.module.css";
 
 const InboundOrderClient = dynamic(
@@ -16,6 +17,17 @@ const InboundOrderClient = dynamic(
 );
 
 export default function InboundOrderPage() {
+  // Emitir page view para inbound order
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "inventory-orders-inbound",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
+
   return (
     <div className={styles.content}>
       <header className={styles.header}>

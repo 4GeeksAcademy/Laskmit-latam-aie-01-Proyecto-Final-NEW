@@ -6,6 +6,7 @@ import { getProducts, createInboundOrder } from "../../../../../lib/inventory";
 import { getErrorMessage } from "../../../../../lib/api-client";
 import type { InventoryProduct } from "../../../../../lib/inventory";
 import styles from "../../inventory.module.css";
+import { track } from "../../../../../lib/telemetry";
 
 export function InboundOrderClient() {
   const searchParams = useSearchParams();
@@ -80,7 +81,22 @@ export function InboundOrderClient() {
         office,
       });
 
-      const productName = products.find((p) => p.id === result.asset_id)?.name ?? `ID ${result.asset_id}`;
+      const product = products.find((p) => p.id === result.asset_id);
+      const productName = product?.name ?? `ID ${result.asset_id}`;
+
+      // Emitir evento de telemetría: inbound_order_created
+      track("inbound_order_created", {
+        office: office.toLowerCase(),
+        product_id: result.asset_id,
+        product_category: product?.category ?? "unknown",
+        programme_id: "", // se obtendría del producto si estuviera disponible en la UI
+        quantity: result.quantity,
+        unit_cost: 0, // el costo unitario lo registra el backend
+        currency: office.toLowerCase() === "miami" ? "USD" : "EUR",
+        supplier: supplier.trim(),
+        order_id: result.id,
+      });
+
       setSubmitSuccess(
         `Orden de entrada registrada correctamente: ${result.quantity} unidades de "${productName}".`,
       );

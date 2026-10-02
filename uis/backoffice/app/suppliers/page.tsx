@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { track } from "../../lib/telemetry";
 import styles from "./suppliers.module.css";
 
 const SuppliersPageClient = dynamic(
@@ -16,6 +17,17 @@ const SuppliersPageClient = dynamic(
 );
 
 export default function SuppliersPage() {
+  // Emitir page view para suppliers
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "suppliers",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
+
   // Página contenedora: copy principal + componente cliente con toda la interacción.
   return (
     <div className={styles.page}>

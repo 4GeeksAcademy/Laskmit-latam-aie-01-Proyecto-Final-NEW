@@ -4,6 +4,17 @@ import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
 import { apiRequest, getErrorMessage } from "../../lib/api-client";
 import type { ForgotPasswordRequest, PasswordActionResponse } from "../../lib/auth-types";
+import { track } from "../../lib/telemetry";
+import { initTelemetry } from "../../lib/telemetry-init";
+
+function getClientIP(): string {
+  return "0.0.0.0";
+}
+
+function getEmailDomain(email: string): string {
+  const parts = email.split("@");
+  return parts.length > 1 ? parts[1].toLowerCase() : "unknown";
+}
 
 export default function ForgotPasswordPage() {
   const emailRef = useRef<HTMLInputElement>(null);
@@ -11,6 +22,18 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // Inicializar telemetría y emitir page view
+  initTelemetry();
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "forgot-password",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: null,
+    });
+  }, 100);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -23,6 +46,12 @@ export default function ForgotPasswordPage() {
       emailRef.current?.focus();
       return;
     }
+
+    // Emitir auth_password_reset_requested
+    track("auth_password_reset_requested", {
+      email_domain: getEmailDomain(email),
+      ip_address: getClientIP(),
+    });
 
     setSubmitting(true);
     try {

@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { track } from "../../lib/telemetry";
 import styles from "./talent-pipeline.module.css";
 
 const CandidatesPageClient = dynamic(
@@ -16,6 +17,17 @@ const CandidatesPageClient = dynamic(
 );
 
 export default function Home() {
+  // Emitir page view para talent-pipeline
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "talent-pipeline",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
+
   return (
     <div className={styles.page}>
       <div className={styles.content}>

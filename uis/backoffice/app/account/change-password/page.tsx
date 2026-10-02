@@ -3,6 +3,8 @@
 import { FormEvent, useRef, useState } from "react";
 import { apiRequest, getErrorMessage } from "../../../lib/api-client";
 import type { ChangePasswordRequest, PasswordActionResponse } from "../../../lib/auth-types";
+import { track } from "../../../lib/telemetry";
+import { initTelemetry } from "../../../lib/telemetry-init";
 
 export default function ChangePasswordPage() {
   const currentPasswordRef = useRef<HTMLInputElement>(null);
@@ -10,6 +12,18 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Inicializar telemetría y emitir page view
+  initTelemetry();
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "change-password",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -51,6 +65,11 @@ export default function ChangePasswordPage() {
       const response = await apiRequest<PasswordActionResponse>("/auth/change-password", {
         method: "POST",
         body: payload,
+      });
+      // Éxito — emitir evento de cambio de contraseña
+      track("auth_password_changed", {
+        user_role: "authenticated",
+        change_source: "voluntary",
       });
       formElement.reset();
       setSuccess(response.message);

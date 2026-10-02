@@ -166,3 +166,5 @@ describe("formatDate", () => {
     expect(() => formatDate("not-a-date")).toThrow(RangeError);
   });
 });
+
+export {};

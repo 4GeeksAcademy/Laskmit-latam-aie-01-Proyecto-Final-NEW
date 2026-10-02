@@ -114,15 +114,44 @@ function getCurrentUserId(): string | null {
   return null;
 }
 
+// ── Detección dinámica del endpoint ────────────────────────────────────────────────
+
 /**
- * URL del endpoint de telemetría.
- * En Next.js las variables NEXT_PUBLIC_ se reemplazan en tiempo de
- * compilación, por lo que process.env funciona tanto en SSR como en
- * el navegador.
+ * Resuelve la URL del endpoint de telemetría según el entorno donde
+ * se ejecuta el navegador.
+ *
+ * Prioridad:
+ * 1. Detección automática de entorno Codespaces: transforma el hostname
+ *    de la UI (puerto 3001) al puerto del backend (8000), generando una
+ *    URL HTTPS. Esto evita bloqueos por mixed-content cuando el frontend
+ *    se sirve sobre HTTPS (Codespaces, GitHub Pages, etc.).
+ * 2. Variable de entorno explícita NEXT_PUBLIC_TELEMETRY_ENDPOINT.
+ *    En entornos reales (producción) se asigna a la URL real del backend.
+ * 3. Fallback a localhost para desarrollo local con Docker.
+ *
+ * NOTA: la detección de Codespaces va ANTES que la variable de entorno
+ * porque en entornos remotos el navegador bloquea fetch() a HTTP desde
+ * una página servida con HTTPS. La env var se usa cuando NO se detecta
+ * un patrón de hostname remoto.
  */
-const TELEMETRY_ENDPOINT =
-  process.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT ||
-  "http://localhost:8000/telemetry/events";
+function getTelemetryEndpoint(): string {
+  // 1. Detección de entorno remoto (Codespaces, etc.):
+  //    https://<name>-3001.app.github.dev → https://<name>-8000.app.github.dev
+  if (typeof window !== "undefined") {
+    const match = window.location.hostname.match(/^(.*)-\d+\.(.*)$/);
+    if (match) {
+      return `https://${match[1]}-8000.${match[2]}/telemetry/events`;
+    }
+  }
+
+  // 2. Variable de entorno explícita (usada en producción o local sin Codespaces)
+  if (process.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT) {
+    return process.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT.replace(/\/$/, "");
+  }
+
+  // 3. Fallback local para desarrollo con Docker
+  return "http://localhost:8000/telemetry/events";
+}
 
 // ── Envío con reintentos (backoff exponencial) ──────────────────────────────────────
 
@@ -132,8 +161,9 @@ const TELEMETRY_ENDPOINT =
  * Si se agotan los reintentos, descarta el lote silenciosamente.
  */
 async function sendBatch(events: TelemetryEventPayload[], attempt = 0): Promise<void> {
+  const endpoint = getTelemetryEndpoint();
   try {
-    const response = await fetch(TELEMETRY_ENDPOINT, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ events } as TelemetryBatchPayload),
@@ -149,6 +179,7 @@ async function sendBatch(events: TelemetryEventPayload[], attempt = 0): Promise<
       const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
       console.error(
         `[Telemetry] Flush failed (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${delay}ms...`,
+        `endpoint=${endpoint}`,
         err instanceof Error ? err.message : String(err),
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -158,6 +189,7 @@ async function sendBatch(events: TelemetryEventPayload[], attempt = 0): Promise<
     // Se agotaron los reintentos — descartar el lote
     console.error(
       `[Telemetry] Flush failed after ${MAX_RETRIES} attempts — discarding batch of ${events.length} event(s)`,
+      `endpoint=${endpoint}`,
       err instanceof Error ? err.message : String(err),
     );
   }
@@ -184,7 +216,7 @@ function flushWithBeacon(): void {
     const blob = new Blob([JSON.stringify({ events } as TelemetryBatchPayload)], {
       type: "application/json",
     });
-    navigator.sendBeacon(TELEMETRY_ENDPOINT, blob);
+    navigator.sendBeacon(getTelemetryEndpoint(), blob);
   } catch (err) {
     console.error(
       "[Telemetry] sendBeacon failed",

@@ -13,8 +13,8 @@
 
 // ── Configuración de entorno ANTES del import del módulo ────────────────────────────
 // NOTA: NEXT_PUBLIC_TELEMETRY_ENDPOINT debe estar seteada antes de que el módulo
-// telemetry.ts se importe por primera vez, porque la constante TELEMETRY_ENDPOINT
-// se evalúa al cargar el módulo.
+// telemetry.ts se importe por primera vez, porque getTelemetryEndpoint() la
+// evalúa al cargar el módulo.
 const FAKE_ENDPOINT = "http://fake-telemetry.test/events";
 process.env.NEXT_PUBLIC_TELEMETRY_ENDPOINT = FAKE_ENDPOINT;
 

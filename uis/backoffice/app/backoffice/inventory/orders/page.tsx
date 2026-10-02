@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Suspense, useState } from "react";
+import { track } from "../../../../lib/telemetry";
 import styles from "../inventory.module.css";
 
 const InboundOrderClient = dynamic(
@@ -29,6 +30,17 @@ type TabId = "inbound" | "outbound" | "history";
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<TabId>("inbound");
+
+  // Emitir page view para orders
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "inventory-orders",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "inbound", label: "📥 Pedidos de entrada" },

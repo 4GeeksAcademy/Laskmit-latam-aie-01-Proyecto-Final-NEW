@@ -1,5 +1,6 @@
 import { clearAccessToken, getAccessToken } from "./auth";
 import type { FastApiValidationError } from "./auth-types";
+import { track } from "./telemetry";
 
 type ResponseType = "json" | "blob" | "text" | "void";
 
@@ -126,6 +127,8 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
+  const requestStartTime: number = typeof window !== "undefined" && typeof window.performance?.now === "function" ? window.performance.now() : Date.now();
+
   let response: Response;
   try {
     response = await fetch(`${detectApiBaseUrl()}${path}`, {
@@ -133,19 +136,62 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       body: requestBody,
       headers,
     });
-  } catch {
+  } catch (networkError) {
+    // Error de red — emitir telemetría antes de relanzar
+    track("error_api_exception", {
+      endpoint: path,
+      status_code: 0,
+      error_message: networkError instanceof Error ? networkError.message : "Network error",
+      component: "api-client",
+    });
     throw new ApiError("No se pudo conectar con el servicio. Comprueba tu conexión e inténtalo de nuevo.", 0);
   }
 
+  // Medir latencia de la llamada
+  const requestEndTime: number = typeof window !== "undefined" && typeof window.performance?.now === "function" ? window.performance.now() : Date.now();
+  const latencyMs = Math.round(requestEndTime - requestStartTime);
+
   if (!response.ok) {
+    // Emitir evento de error de validación (422) o excepción (5xx)
+    if (response.status === 422) {
+      track("error_api_validation_failure", {
+        endpoint: path,
+        status_code: 422,
+        component: "api-client",
+      });
+    } else if (response.status >= 500) {
+      track("error_api_exception", {
+        endpoint: path,
+        status_code: response.status,
+        error_message: `HTTP ${response.status}`,
+        component: "api-client",
+      });
+    }
+
     const error = await parseError(response, errorMessages);
     if (authenticated && response.status === 401) {
+      // Emitir evento de sesión expirada
+      track("auth_session_expired", {
+        session_duration_minutes: 0,
+        user_role: null,
+        expired_action: path,
+      });
       clearAccessToken();
       if (typeof window !== "undefined") {
         window.location.replace("/login");
       }
     }
     throw error;
+  }
+
+  // Emitir métrica de rendimiento (sampleada al 10%)
+  if (Math.random() < 0.1) {
+    track("performance_api_latency_recorded", {
+      endpoint: path,
+      latency_ms: latencyMs,
+      status_code: response.status,
+      sample_rate: 0.1,
+    });
   }
 
   if (responseType === "void") {

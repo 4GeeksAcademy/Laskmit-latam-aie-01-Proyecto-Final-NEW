@@ -7,6 +7,19 @@ import { ApiError, apiRequest, getErrorMessage } from "../../lib/api-client";
 import { clearAccessToken, setAccessToken } from "../../lib/auth";
 import { clearCachedSession } from "../../lib/session-cache";
 import type { AuthToken } from "../../lib/auth-types";
+import { track } from "../../lib/telemetry";
+import { initTelemetry } from "../../lib/telemetry-init";
+
+function getClientIP(): string {
+  // En entorno real, el IP se obtendría del servidor.
+  // En el frontend, anonimizamos con un marcador.
+  return "0.0.0.0";
+}
+
+function getEmailDomain(email: string): string {
+  const parts = email.split("@");
+  return parts.length > 1 ? parts[1].toLowerCase() : "unknown";
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -15,6 +28,20 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const passwordReset = searchParams.get("passwordReset") === "success";
+
+  // Inicializar handlers globales de telemetría
+  initTelemetry();
+
+  // Emitir page view para login
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "login",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: null,
+    });
+  }, 100);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -29,6 +56,13 @@ function LoginForm() {
       return;
     }
 
+    // Emitir auth_login_attempted antes del envío
+    track("auth_login_attempted", {
+      email_domain: getEmailDomain(email),
+      ip_address: getClientIP(),
+      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+    });
+
     setSubmitting(true);
     try {
       const token = await apiRequest<AuthToken>("/auth/login", {
@@ -36,11 +70,26 @@ function LoginForm() {
         authenticated: false,
         body: { email, password },
       });
+      // Éxito
+      track("auth_login_succeeded", {
+        email_domain: getEmailDomain(email),
+        ip_address: getClientIP(),
+        user_role: "operator", // se actualizará cuando /auth/me devuelva el rol
+      });
       setAccessToken(token.access_token);
       clearCachedSession(); // limpiar caché antigua antes de navegar
       router.replace("/");
     } catch (requestError) {
       clearAccessToken();
+      const failureReason =
+        requestError instanceof ApiError && requestError.status === 401
+          ? "invalid_credentials"
+          : "network_error";
+      track("auth_login_failed", {
+        email_domain: getEmailDomain(email),
+        ip_address: getClientIP(),
+        failure_reason: failureReason,
+      });
       setError(
         requestError instanceof ApiError && requestError.status === 401
           ? "El email o la contraseña no son correctos."

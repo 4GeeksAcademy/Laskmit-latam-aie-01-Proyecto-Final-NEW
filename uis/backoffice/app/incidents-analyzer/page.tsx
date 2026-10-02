@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useState } from "react";
 import { apiRequest, getErrorMessage } from "../../lib/api-client";
+import { track } from "../../lib/telemetry";
 import "../../public/incidents-analyzer/styles.css";
 
 interface BreakdownValue {
@@ -65,6 +66,16 @@ function PercentageList({ values }: { values: Record<string, BreakdownValue> }) 
 }
 
 export default function IncidentsAnalyzerPage() {
+  // Emitir page view para incidents-analyzer
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "incidents-analyzer",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
   const [file, setFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<IncidentSummary | null>(null);
   const [feedback, setFeedback] = useState("");

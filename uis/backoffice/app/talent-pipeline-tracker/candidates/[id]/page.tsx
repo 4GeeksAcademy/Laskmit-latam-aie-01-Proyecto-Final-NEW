@@ -2,7 +2,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
 const CandidateDetailClient = dynamic(
-  () => import("../../components/CandidateDetailClient"),
+  () => import("../../components/CandidateDetailClient").then((m) => m.CandidateDetailClient),
   {
     loading: () => (
       <div role="status" aria-label="Cargando detalle de candidato…"
