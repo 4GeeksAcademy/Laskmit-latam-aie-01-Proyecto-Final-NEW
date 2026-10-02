@@ -170,25 +170,32 @@ describe("F3-PISO — Piso técnico transversal", () => {
 // ═══════════════════════════════════════════════════════════════════════════════════
 
 describe("F3-AUTH — Eventos de autenticación", () => {
-  it("F3-AUTH-01: auth_login_attempted en login/page.tsx", async () => {
+  // Tras centralizar auth events en hooks/use-auth-telemetry.ts, verificamos
+  // el archivo del hook en lugar de las páginas individuales.
+
+  it("F3-AUTH-01: auth_login_attempted en hooks/use-auth-telemetry.ts", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("app/login/page.tsx", "utf-8");
+    const content = fs.readFileSync("hooks/use-auth-telemetry.ts", "utf-8");
     expect(content).toContain('track("auth_login_attempted"');
+    expect(content).toContain("email_domain");
+    expect(content).toContain("ip_address");
+    expect(content).toContain("user_agent");
   });
 
-  it("F3-AUTH-02: auth_login_succeeded en login/page.tsx", async () => {
+  it("F3-AUTH-02: auth_login_succeeded en hooks/use-auth-telemetry.ts", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("app/login/page.tsx", "utf-8");
+    const content = fs.readFileSync("hooks/use-auth-telemetry.ts", "utf-8");
     expect(content).toContain('track("auth_login_succeeded"');
+    expect(content).toContain("email_domain");
+    expect(content).toContain("user_role");
   });
 
-  it("F3-AUTH-03: auth_login_failed en login/page.tsx", async () => {
+  it("F3-AUTH-03: auth_login_failed en hooks/use-auth-telemetry.ts (sin password)", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("app/login/page.tsx", "utf-8");
+    const content = fs.readFileSync("hooks/use-auth-telemetry.ts", "utf-8");
     expect(content).toContain('track("auth_login_failed"');
     expect(content).toContain("failure_reason");
-    // Verificar que en la llamada track("auth_login_failed", ...) no se pasa la contraseña
-    // (la página HTML tiene campos password, pero la llamada track no debe incluirlos)
+    // No debe pasarse la contraseña en el evento
     const trackLoginFailed = content.match(/track\("auth_login_failed",\s*\{[^}]+\}\)/);
     expect(trackLoginFailed).not.toBeNull();
     if (trackLoginFailed) {
@@ -196,16 +203,18 @@ describe("F3-AUTH — Eventos de autenticación", () => {
     }
   });
 
-  it("F3-AUTH-04: auth_password_changed en change-password/page.tsx", async () => {
+  it("F3-AUTH-04: auth_password_changed en hooks/use-auth-telemetry.ts", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("app/account/change-password/page.tsx", "utf-8");
+    const content = fs.readFileSync("hooks/use-auth-telemetry.ts", "utf-8");
     expect(content).toContain('track("auth_password_changed"');
   });
 
-  it("F3-AUTH-05: auth_password_reset_requested en forgot-password/page.tsx", async () => {
+  it("F3-AUTH-05: auth_password_reset_requested en hooks/use-auth-telemetry.ts", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("app/forgot-password/page.tsx", "utf-8");
+    const content = fs.readFileSync("hooks/use-auth-telemetry.ts", "utf-8");
     expect(content).toContain('track("auth_password_reset_requested"');
+    expect(content).toContain("email_domain");
+    expect(content).toContain("ip_address");
   });
 
   it("F3-AUTH-06: auth_session_expired en api-client.ts", async () => {
@@ -216,10 +225,11 @@ describe("F3-AUTH — Eventos de autenticación", () => {
     expect(content).toContain("expired_action");
   });
 
-  it("F3-AUTH-07: auth_login_succeeded también en register/page.tsx", async () => {
+  it("F3-AUTH-07: auth_login_succeeded también en hooks/use-auth-telemetry.ts (trackLoginSucceeded)", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync("app/register/page.tsx", "utf-8");
+    const content = fs.readFileSync("hooks/use-auth-telemetry.ts", "utf-8");
     expect(content).toContain('track("auth_login_succeeded"');
+    expect(content).toContain("trackLoginSucceeded");
   });
 });
 
@@ -295,6 +305,81 @@ describe("F3-WEBVITALS — Web Vitals (Actividad adicional)", () => {
     expect(content).toContain("web_vital_ttfb");
     expect(content).toContain("web_vital_fid");
   });
+
+  it("F3-WEB-03: Web Vitals incluyen path y component en properties", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync("lib/telemetry-init.ts", "utf-8");
+    expect(content).toContain("web_vital_recorded");
+    expect(content).toContain("path");
+    expect(content).toContain("component");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// 6b. Hook de autenticación (Actividad adicional — centralización)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+describe("F3-HOOK — useAuthTelemetry (Actividad adicional)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("F3-HOOK-01: trackLoginAttempted llama a track('auth_login_attempted')", async () => {
+    const { useAuthTelemetry } = await import("../hooks/use-auth-telemetry");
+    const hook = useAuthTelemetry();
+    hook.trackLoginAttempted("user@example.com");
+    expect(mockTrack).toHaveBeenCalledWith("auth_login_attempted", expect.objectContaining({
+      email_domain: "example.com",
+      ip_address: "0.0.0.0",
+    }));
+  });
+
+  it("F3-HOOK-02: trackLoginSucceeded llama a track('auth_login_succeeded')", async () => {
+    const { useAuthTelemetry } = await import("../hooks/use-auth-telemetry");
+    const hook = useAuthTelemetry();
+    hook.trackLoginSucceeded("user@example.com", "operator");
+    expect(mockTrack).toHaveBeenCalledWith("auth_login_succeeded", expect.objectContaining({
+      email_domain: "example.com",
+      user_role: "operator",
+    }));
+  });
+
+  it("F3-HOOK-03: trackLoginFailed llama a track('auth_login_failed') con failure_reason", async () => {
+    const { useAuthTelemetry } = await import("../hooks/use-auth-telemetry");
+    const hook = useAuthTelemetry();
+    hook.trackLoginFailed("user@example.com", "invalid_credentials");
+    expect(mockTrack).toHaveBeenCalledWith("auth_login_failed", expect.objectContaining({
+      email_domain: "example.com",
+      failure_reason: "invalid_credentials",
+    }));
+  });
+
+  it("F3-HOOK-04: trackPasswordChanged llama a track('auth_password_changed')", async () => {
+    const { useAuthTelemetry } = await import("../hooks/use-auth-telemetry");
+    const hook = useAuthTelemetry();
+    hook.trackPasswordChanged();
+    expect(mockTrack).toHaveBeenCalledWith("auth_password_changed", expect.objectContaining({}));
+  });
+
+  it("F3-HOOK-05: trackPasswordResetRequested llama a track('auth_password_reset_requested')", async () => {
+    const { useAuthTelemetry } = await import("../hooks/use-auth-telemetry");
+    const hook = useAuthTelemetry();
+    hook.trackPasswordResetRequested("user@example.com");
+    expect(mockTrack).toHaveBeenCalledWith("auth_password_reset_requested", expect.objectContaining({
+      email_domain: "example.com",
+      ip_address: "0.0.0.0",
+    }));
+  });
+
+  it("F3-HOOK-06: trackSessionExpired llama a track('auth_session_expired')", async () => {
+    const { useAuthTelemetry } = await import("../hooks/use-auth-telemetry");
+    const hook = useAuthTelemetry();
+    hook.trackSessionExpired(30, "api_request");
+    expect(mockTrack).toHaveBeenCalledWith("auth_session_expired", expect.objectContaining({
+      session_duration_minutes: 30,
+      expired_action: "api_request",
+    }));
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -332,10 +417,7 @@ describe("F3-PII — Sin datos personales en eventos", () => {
   // Datos anonimizados (email_domain, ip_address como "0.0.0.0") son aceptables.
   // Solo se marcan como PII si se pasa el valor RAW de email, contraseña, etc.
   const FILES_WITH_TRACK = [
-    "app/login/page.tsx",
-    "app/register/page.tsx",
-    "app/account/change-password/page.tsx",
-    "app/forgot-password/page.tsx",
+    "hooks/use-auth-telemetry.ts",
     "app/backoffice/inventory/orders/inbound/inbound-order-client.tsx",
     "app/backoffice/inventory/orders/outbound/outbound-order-client.tsx",
     "lib/api-client.ts",
@@ -346,8 +428,9 @@ describe("F3-PII — Sin datos personales en eventos", () => {
     it(`No contiene PII en properties en ${file}`, async () => {
       const fs = await import("fs");
       const content = fs.readFileSync(file, "utf-8");
-      // Extraer solo las llamadas a track() para analizar sus properties
-      const trackCalls = content.match(/track\([^;]+\)/g) || [];
+      // Extraer solo las llamadas a track() con su objeto de properties
+      // Usamos regex más preciso que captura track("event_type", {...}) para evitar JSDoc
+      const trackCalls = content.match(/track\(["'][a-z_]+["'],\s*\{[^}]+\}\)/g) || [];
       for (const call of trackCalls) {
         // 1. No debe pasarse la variable "password" como valor de property
         //    (nombres de sección como "forgot-password" NO son PII)

@@ -5,6 +5,7 @@ import { apiRequest, getErrorMessage } from "../../../lib/api-client";
 import type { ChangePasswordRequest, PasswordActionResponse } from "../../../lib/auth-types";
 import { track } from "../../../lib/telemetry";
 import { initTelemetry } from "../../../lib/telemetry-init";
+import { useAuthTelemetry } from "../../../hooks/use-auth-telemetry";
 
 export default function ChangePasswordPage() {
   const currentPasswordRef = useRef<HTMLInputElement>(null);
@@ -12,6 +13,7 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const authTelemetry = useAuthTelemetry();
 
   // Inicializar telemetría y emitir page view
   initTelemetry();
@@ -67,10 +69,7 @@ export default function ChangePasswordPage() {
         body: payload,
       });
       // Éxito — emitir evento de cambio de contraseña
-      track("auth_password_changed", {
-        user_role: "authenticated",
-        change_source: "voluntary",
-      });
+      authTelemetry.trackPasswordChanged();
       formElement.reset();
       setSuccess(response.message);
       currentPasswordRef.current?.focus();

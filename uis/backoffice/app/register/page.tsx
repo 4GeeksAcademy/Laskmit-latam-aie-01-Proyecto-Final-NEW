@@ -8,6 +8,7 @@ import { clearAccessToken, setAccessToken } from "../../lib/auth";
 import type { AuthToken } from "../../lib/auth-types";
 import { track } from "../../lib/telemetry";
 import { initTelemetry } from "../../lib/telemetry-init";
+import { useAuthTelemetry } from "../../hooks/use-auth-telemetry";
 
 type FieldName = "email" | "password" | "confirmPassword" | "name" | "phone" | "address";
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -33,6 +34,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [registered, setRegistered] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const authTelemetry = useAuthTelemetry();
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
@@ -102,11 +104,7 @@ export default function RegisterPage() {
         body: { email, password },
       });
       // Éxito de registro y login
-      track("auth_login_succeeded", {
-        email_domain: email.split("@").length > 1 ? email.split("@")[1].toLowerCase() : "unknown",
-        ip_address: "0.0.0.0",
-        user_role: "operator",
-      });
+      authTelemetry.trackLoginSucceeded(email, "operator");
       setAccessToken(token.access_token);
       router.replace("/");
     } catch (requestError) {

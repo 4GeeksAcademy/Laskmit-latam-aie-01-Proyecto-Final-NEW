@@ -485,7 +485,9 @@ Se verifican categorías adicionales:
 
 | Total | ✅ Pasados | ❌ Fallados |
 |-------|-----------|------------|
-| 36    | **36**     | **0**      |
+| 40    | **40**     | **0**      |
+
+#### Detalle de cada prueba
 
 #### Detalle de cada prueba
 
@@ -521,13 +523,13 @@ Se verifican categorías adicionales:
 
 | # | Test | Resultado | Verifica |
 |---|------|-----------|----------|
-| AUTH-01 | auth_login_attempted en login/page.tsx | ✅ | Intento de login capturado |
-| AUTH-02 | auth_login_succeeded en login/page.tsx | ✅ | Login exitoso capturado |
-| AUTH-03 | auth_login_failed con failure_reason (sin incluir password en la llamada track) | ✅ | Fallo de login capturado sin PII |
-| AUTH-04 | auth_password_changed en change-password/page.tsx | ✅ | Cambio de contraseña instrumentado |
-| AUTH-05 | auth_password_reset_requested en forgot-password/page.tsx | ✅ | Solicitud de reseteo instrumentada |
+| AUTH-01 | auth_login_attempted en hooks/use-auth-telemetry.ts | ✅ | Intento de login capturado (centralizado en hook) |
+| AUTH-02 | auth_login_succeeded en hooks/use-auth-telemetry.ts | ✅ | Login exitoso capturado (centralizado en hook) |
+| AUTH-03 | auth_login_failed con failure_reason (sin incluir password) | ✅ | Fallo de login capturado sin PII (centralizado en hook) |
+| AUTH-04 | auth_password_changed en hooks/use-auth-telemetry.ts | ✅ | Cambio de contraseña instrumentado (centralizado en hook) |
+| AUTH-05 | auth_password_reset_requested en hooks/use-auth-telemetry.ts | ✅ | Solicitud de reseteo instrumentada (centralizado en hook) |
 | AUTH-06 | auth_session_expired con session_duration_minutes, expired_action en api-client.ts | ✅ | Sesión expirada detectada |
-| AUTH-07 | auth_login_succeeded también en register/page.tsx | ✅ | Registro también emite login_succeeded |
+| AUTH-07 | auth_login_succeeded también en hooks/use-auth-telemetry.ts (trackLoginSucceeded) | ✅ | Registro también emite login_succeeded |
 
 </details>
 
@@ -553,17 +555,29 @@ Se verifican categorías adicionales:
 </details>
 
 <details>
-<summary><b>F3-WEBVITALS — Web Vitals — Actividad adicional (2 tests)</b></summary>
+<summary><b>F3-WEBVITALS — Web Vitals — Actividad adicional (3 tests)</b></summary>
 
 | # | Test | Resultado | Verifica |
 |---|------|-----------|----------|
 | WEB-01 | web_vital_recorded con value_ms, metric, PerformanceObserver | ✅ | Web Vitals capturados vía PerformanceObserver |
 | WEB-02 | web_vital_lcp, web_vital_fcp, web_vital_ttfb, web_vital_fid asignados dinámicamente | ✅ | Todas las métricas web definidas |
+| WEB-03 | Web Vitals incluyen path y component en properties | ✅ | Contexto de página adjunto a cada vital |
 
 </details>
 
 <details>
-<summary><b>F3-INIT — Inicialización global (3 tests)</b></summary>
+<summary><b>F3-HOOK — useAuthTelemetry — Actividad adicional (6 tests)</b></summary>
+
+| # | Test | Resultado | Verifica |
+|---|------|-----------|----------|
+| HOOK-01 | trackLoginAttempted llama a track('auth_login_attempted') con email_domain, ip_address | ✅ | Hook emite evento de intento de login |
+| HOOK-02 | trackLoginSucceeded llama a track('auth_login_succeeded') con email_domain, user_role | ✅ | Hook emite evento de login exitoso |
+| HOOK-03 | trackLoginFailed llama a track('auth_login_failed') con failure_reason | ✅ | Hook emite evento de login fallido sin PII |
+| HOOK-04 | trackPasswordChanged llama a track('auth_password_changed') | ✅ | Hook emite evento de cambio de contraseña |
+| HOOK-05 | trackPasswordResetRequested llama a track('auth_password_reset_requested') | ✅ | Hook emite evento de solicitud de reseteo |
+| HOOK-06 | trackSessionExpired llama a track('auth_session_expired') con session_duration, expired_action | ✅ | Hook emite evento de sesión expirada |
+
+</details>
 
 | # | Test | Resultado | Verifica |
 |---|------|-----------|----------|
@@ -578,7 +592,7 @@ Se verifican categorías adicionales:
 
 | # | Test | Resultado | Verifica |
 |---|------|-----------|----------|
-| PII-01–08 | Ningún archivo con track() contiene PII en properties (login, register, change-password, forgot-password, inbound-order, outbound-order, api-client, telemetry-init) | ✅ | Sin emails literales, contraseñas, nombres completos ni teléfonos en los eventos |
+| PII-01–05 | Ningún archivo con track() contiene PII en properties (use-auth-telemetry, inbound-order, outbound-order, api-client, telemetry-init) | ✅ | Sin emails literales, contraseñas, nombres completos ni teléfonos en los eventos |
 
 </details>
 
@@ -591,17 +605,17 @@ Se verifican categorías adicionales:
 | `outbound_order_created` | outbound-order-client.tsx | exit_type, assigned_to, order_id |
 | `stock_threshold_triggered` | outbound-order-client.tsx | threshold_minimum, current_stock |
 | `insufficient_stock_rejected` | outbound-order-client.tsx | quantity_requested, quantity_available |
-| `auth_login_attempted` | login/page.tsx | email_domain, ip_address, user_agent |
-| `auth_login_succeeded` | login/page.tsx, register/page.tsx | email_domain, ip_address, user_role |
-| `auth_login_failed` | login/page.tsx | email_domain, ip_address, failure_reason |
-| `auth_password_changed` | change-password/page.tsx | — (sin properties adicionales) |
-| `auth_password_reset_requested` | forgot-password/page.tsx | email_domain, ip_address |
-| `auth_session_expired` | api-client.ts | session_duration_minutes, expired_action |
+| `auth_login_attempted` | hooks/use-auth-telemetry.ts | email_domain, ip_address, user_agent |
+| `auth_login_succeeded` | hooks/use-auth-telemetry.ts | email_domain, user_role |
+| `auth_login_failed` | hooks/use-auth-telemetry.ts | email_domain, failure_reason |
+| `auth_password_changed` | hooks/use-auth-telemetry.ts | — (sin properties adicionales) |
+| `auth_password_reset_requested` | hooks/use-auth-telemetry.ts | email_domain, ip_address |
+| `auth_session_expired` | api-client.ts, hooks/use-auth-telemetry.ts | session_duration_minutes, expired_action |
 | `error_api_exception` | api-client.ts (2 ubicaciones) | status_code, endpoint, method, error_message |
 | `error_api_validation_failure` | api-client.ts | status_code: 422, endpoint, method, validation_errors |
 | `error_frontend_unhandled` | telemetry-init.ts (2 ubicaciones) | error_message, component, source, lineno, colno, path, occurrence_count |
 | `performance_api_latency_recorded` | api-client.ts, telemetry-init.ts (3 total) | latency_ms, endpoint, method, sample_rate |
-| `web_vital_recorded` | telemetry-init.ts | value_ms, metric, rating |
+| `web_vital_recorded` | telemetry-init.ts | value_ms, metric, rating, path, component |
 | `web_vital_lcp` | telemetry-init.ts (dinámico) | — |
 | `web_vital_fcp` | telemetry-init.ts (dinámico) | — |
 | `web_vital_ttfb` | telemetry-init.ts (dinámico) | — |
@@ -678,8 +692,11 @@ La instrumentación se organiza en tres capas:
 | 16 | web_vital_lcp, web_vital_fcp, web_vital_ttfb, web_vital_fid mapeados | ✅ |
 | 17 | initTelemetry() registra las 3 inicializaciones (error handlers, web vitals, page load) | ✅ |
 | 18 | TelemetryInit componente wrapper en React | ✅ |
-| 19 | Sin regresiones: suite completa de telemetría (48 tests) pasa | ✅ |
+| 19 | Sin regresiones: suite completa de telemetría (52 tests) pasa | ✅ |
 | 20 | No-PII: ningún evento contiene emails literales, contraseñas, nombres o teléfonos | ✅ |
+| 21 | Actividad adicional: useAuthTelemetry hook centraliza eventos de autenticación (6 funciones) | ✅ |
+| 22 | Actividad adicional: Web Vitals incluyen path y component en properties | ✅ |
+| 23 | Actividad adicional: hook tests (F3-HOOK) verifican cada función contra track() | ✅ |
 
 **Todos los criterios cumplidos.** 🎉
 

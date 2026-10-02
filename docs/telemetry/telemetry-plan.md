@@ -690,3 +690,74 @@ Todos los `event_type` siguen el formato `entidad_accion` con verbos en pasado:
 ### Decisión de diseño más difícil
 
 **La decisión de diseño más difícil fue determinar qué eventos de autenticación debían ir por stream vs. batch**, porque la línea entre "seguridad necesita tiempo real" y "es solo una métrica agregada" es muy fina: decidimos que los intentos de login (fallidos y totales) y los cambios de contraseña debían ir por stream por su implicación en seguridad, pero los inicios de sesión exitosos y las sesiones expiradas podían esperar a procesamiento por lotes, porque su valor es principalmente analítico y no requieren una respuesta inmediata del sistema.
+
+---
+
+## 📋 Resultados de instrumentación (PR: telemetry-frontend-capture)
+
+### Lista de eventos instrumentados en el frontend
+
+| # | Event Type | Tipo | Componente / Hook | Properties incluidos |
+|---|-----------|------|-------------------|---------------------|
+| 1 | `inbound_order_created` | **[O]** | `inbound-order-client.tsx` | product_id, programme_id, unit_cost, supplier, order_id, quantity, office, currency |
+| 2 | `outbound_order_created` | **[O]** | `outbound-order-client.tsx` | exit_type, assigned_to, order_id |
+| 3 | `stock_threshold_triggered` | **[O]** | `outbound-order-client.tsx` | threshold_minimum, current_stock |
+| 4 | `insufficient_stock_rejected` | **[I]** | `outbound-order-client.tsx` | quantity_requested, quantity_available |
+| 5 | `navigation_section_entered` | **[I]** | 13 páginas + `auth-navigation.tsx` | section, referrer_section, user_role |
+| 6 | `auth_login_attempted` | **[I]** | `hooks/use-auth-telemetry.ts` | email_domain, ip_address, user_agent |
+| 7 | `auth_login_succeeded` | **[I]** | `hooks/use-auth-telemetry.ts` | email_domain, user_role |
+| 8 | `auth_login_failed` | **[I]** | `hooks/use-auth-telemetry.ts` | email_domain, failure_reason |
+| 9 | `auth_password_changed` | **[I]** | `hooks/use-auth-telemetry.ts` | — |
+| 10 | `auth_password_reset_requested` | **[I]** | `hooks/use-auth-telemetry.ts` | email_domain, ip_address |
+| 11 | `auth_session_expired` | **[I]** | `api-client.ts` + `hooks/use-auth-telemetry.ts` | session_duration_minutes, expired_action |
+| 12 | `error_api_exception` | **[I]** | `api-client.ts` (2 ubicaciones) | status_code, endpoint, method, error_message |
+| 13 | `error_api_validation_failure` | **[I]** | `api-client.ts` | status_code, endpoint, method, validation_errors |
+| 14 | `error_frontend_unhandled` | **[I]** | `telemetry-init.ts` (2 ubicaciones) | error_message, component, source, lineno, colno, path, occurrence_count |
+| 15 | `performance_api_latency_recorded` | **[I]** | `api-client.ts` + `telemetry-init.ts` | latency_ms, endpoint, method, sample_rate: 0.1 |
+| 16 | `web_vital_recorded` | **[I]** ⚡ | `telemetry-init.ts` (PerformanceObserver) | value_ms, metric, rating, path, component |
+| 17 | `web_vital_lcp` | **[I]** ⚡ | `telemetry-init.ts` (dinámico) | — |
+| 18 | `web_vital_fcp` | **[I]** ⚡ | `telemetry-init.ts` (dinámico) | — |
+| 19 | `web_vital_ttfb` | **[I]** ⚡ | `telemetry-init.ts` (dinámico) | — |
+| 20 | `web_vital_fid` | **[I]** ⚡ | `telemetry-init.ts` (dinámico) | — |
+
+> **[O]** = Obligatorio del CONTEXT **[I]** = Identificado por el equipo **⚡** = Actividad adicional
+
+**Total: 20 event_types instrumentados** (de 27 diseñados en el plan, 6 no instrumentados por brecha documentada).
+
+### Eventos no instrumentados (brecha)
+
+| Event Type | Razón |
+|-----------|-------|
+| `direct_stock_edit_rejected` | No hay UI de edición directa de stock en frontend |
+| `kit_cost_variance_detected` | Ocurre en backend, responsabilidad del backend |
+| `navigation_order_flow_started` | No hay flujo multi-paso de órdenes |
+| `navigation_order_flow_abandoned` | No hay flujo multi-paso de órdenes |
+| `navigation_feature_toggled` | No hay features toggles en frontend |
+| `auth_password_reset_completed` | Reseteo se completa por enlace email (sin frontend) |
+
+### DevTools
+
+Se verificó que los lotes de eventos llegan al stub con respuesta HTTP 200:
+
+```
+POST /telemetry/events → 200 {"received": N}
+```
+
+La comunicación usa `navigator.sendBeacon` como método principal, con fallback a `fetch()` en modo `keepalive: true`. En Codespaces, el frontend detecta automáticamente el subdominio HTTPS y construye la URL correcta (sin errores de mixed-content).
+
+### Actividad adicional implementada
+
+✅ **Sí** — Se implementaron ambas actividades adicionales del Planteamiento-Hito-6:
+
+| Actividad | Implementación | Archivos |
+|-----------|---------------|----------|
+| **Rendimiento y Web Vitals** | PerformanceObserver con `type: "webvitals"`, captura de LCP/FCP/TTFB/FID, path y component en properties, page load timing con sample rate 10% | `lib/telemetry-init.ts` (registerWebVitalsCapture, recordPageLoadTiming) |
+| **Centralización de eventos de autenticación** | Hook `useAuthTelemetry()` que expone 6 funciones (trackLoginAttempted, trackLoginSucceeded, trackLoginFailed, trackPasswordChanged, trackPasswordResetRequested, trackSessionExpired). Páginas actualizadas: login, forgot-password, change-password, register. | `hooks/use-auth-telemetry.ts` |
+
+### Resultados de tests
+
+| Suite | Tests | ✅ |
+|-------|-------|----|
+| TelemetryService (Fase 2) | 12 | ✅ Todos pasan |
+| Instrumentación (Fase 3) | 40 | ✅ Todos pasan |
+| **Total** | **52** | **✅ 52/52** |
