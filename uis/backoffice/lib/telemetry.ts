@@ -170,7 +170,17 @@ async function sendBatch(events: TelemetryEventPayload[], attempt = 0): Promise<
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      // Intentar leer el cuerpo de la respuesta para diagnóstico
+      let responseBody: string | null = null;
+      try {
+        responseBody = await response.text();
+      } catch {
+        // ignorar si no se puede leer el body
+      }
+      throw new Error(
+        `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}` +
+          (responseBody ? ` — respuesta: ${responseBody.slice(0, 500)}` : ""),
+      );
     }
     // Éxito — lote enviado
     return;
@@ -178,7 +188,7 @@ async function sendBatch(events: TelemetryEventPayload[], attempt = 0): Promise<
     if (attempt < MAX_RETRIES - 1) {
       const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
       console.error(
-        `[Telemetry] Flush failed (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${delay}ms...`,
+        `[Telemetry] Flush failed (attempt ${attempt + 1}/${MAX_RETRIES}, batch=${events.length} events), retrying in ${delay}ms...`,
         `endpoint=${endpoint}`,
         err instanceof Error ? err.message : String(err),
       );
