@@ -179,3 +179,5 @@ describe("detailText()", () => {
     expect(detailText({ order_type: "outbound", exit_type: "consumption" })).toBe("Consumo");
   });
 });
+
+export {};

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { track } from "../../lib/telemetry";
 import styles from "./incidents.module.css";
 
 const IncidentManager = dynamic(
@@ -18,6 +19,17 @@ const IncidentManager = dynamic(
 );
 
 export default function IncidentsPage() {
+  // Emitir page view para incidents
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "incidents",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
+
   return (
     <main className={styles.page}>
       <div className={styles.shell}>

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { apiRequest, getErrorMessage } from "../../../lib/api-client";
 import type { CurrentUser, UserProfile } from "../../../lib/auth-types";
+import { track } from "../../../lib/telemetry";
 
 interface EditableProfile {
   name: string;
@@ -29,6 +30,17 @@ export default function ProfilePage() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Emitir page view para profile
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "profile",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
 
   useEffect(() => {
     let active = true;

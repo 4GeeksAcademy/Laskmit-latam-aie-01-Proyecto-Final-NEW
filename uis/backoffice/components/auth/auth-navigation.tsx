@@ -1,12 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { clearAccessToken } from "../../lib/auth";
 import { clearCachedSession } from "../../lib/session-cache";
+import { track } from "../../lib/telemetry";
+import { initTelemetry } from "../../lib/telemetry-init";
 
 export function AuthNavigation() {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Inicializar handlers globales de telemetría (errores, rendimiento, web vitals)
+  initTelemetry();
+
+  // Emitir page view al montar la navegación
+  // Se usa un breve retardo para evitar duplicados con navegaciones SPA
+  setTimeout(() => {
+    const section = pathname.replace(/^\//, "").split("/")[0] || "home";
+    track("navigation_section_entered", {
+      section,
+      referrer_section: document.referrer ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external" : null,
+      user_role: "authenticated",
+    });
+  }, 100);
 
   function logout(): void {
     clearAccessToken();

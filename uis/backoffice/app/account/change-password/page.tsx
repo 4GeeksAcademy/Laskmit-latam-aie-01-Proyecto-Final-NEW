@@ -3,6 +3,9 @@
 import { FormEvent, useRef, useState } from "react";
 import { apiRequest, getErrorMessage } from "../../../lib/api-client";
 import type { ChangePasswordRequest, PasswordActionResponse } from "../../../lib/auth-types";
+import { track } from "../../../lib/telemetry";
+import { initTelemetry } from "../../../lib/telemetry-init";
+import { useAuthTelemetry } from "../../../hooks/use-auth-telemetry";
 
 export default function ChangePasswordPage() {
   const currentPasswordRef = useRef<HTMLInputElement>(null);
@@ -10,6 +13,19 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const authTelemetry = useAuthTelemetry();
+
+  // Inicializar telemetría y emitir page view
+  initTelemetry();
+  setTimeout(() => {
+    track("navigation_section_entered", {
+      section: "change-password",
+      referrer_section: typeof document !== "undefined" && document.referrer
+        ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+        : null,
+      user_role: "authenticated",
+    });
+  }, 100);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -52,6 +68,8 @@ export default function ChangePasswordPage() {
         method: "POST",
         body: payload,
       });
+      // Éxito — emitir evento de cambio de contraseña
+      authTelemetry.trackPasswordChanged();
       formElement.reset();
       setSuccess(response.message);
       currentPasswordRef.current?.focus();

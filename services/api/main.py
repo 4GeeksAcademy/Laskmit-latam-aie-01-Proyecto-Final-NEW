@@ -44,6 +44,11 @@ except ModuleNotFoundError:
     from routes.profiles import router as profiles_router  # type: ignore[no-redef]
 
 try:
+    from services.api.routes.telemetry import router as telemetry_router
+except ModuleNotFoundError:
+    from routes.telemetry import router as telemetry_router  # type: ignore[no-redef]
+
+try:
     from services.api.routers.inventory import router as inventory_router
 except ModuleNotFoundError:
     from routers.inventory import router as inventory_router  # type: ignore[no-redef]
@@ -95,6 +100,7 @@ app.include_router(incidents_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(profiles_router)
+app.include_router(telemetry_router)
 
 # Solo incluir rutas de inventario si Supabase está configurado
 if supabase_engine is not None:

@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { ApiError, apiRequest, getErrorMessage } from "../../lib/api-client";
 import { clearAccessToken, setAccessToken } from "../../lib/auth";
 import type { AuthToken } from "../../lib/auth-types";
+import { track } from "../../lib/telemetry";
+import { initTelemetry } from "../../lib/telemetry-init";
+import { useAuthTelemetry } from "../../hooks/use-auth-telemetry";
 
 type FieldName = "email" | "password" | "confirmPassword" | "name" | "phone" | "address";
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -31,6 +34,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [registered, setRegistered] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const authTelemetry = useAuthTelemetry();
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
@@ -67,6 +71,20 @@ export default function RegisterPage() {
       return;
     }
 
+    // Inicializar telemetría y emitir page view para register
+    if (!registered) {
+      initTelemetry();
+      setTimeout(() => {
+        track("navigation_section_entered", {
+          section: "register",
+          referrer_section: typeof document !== "undefined" && document.referrer
+            ? new URL(document.referrer).pathname.replace(/^\//, "").split("/")[0] || "external"
+            : null,
+          user_role: null,
+        });
+      }, 100);
+    }
+
     setSubmitting(true);
     let accountCreated = registered;
     try {
@@ -85,6 +103,8 @@ export default function RegisterPage() {
         authenticated: false,
         body: { email, password },
       });
+      // Éxito de registro y login
+      authTelemetry.trackLoginSucceeded(email, "operator");
       setAccessToken(token.access_token);
       router.replace("/");
     } catch (requestError) {

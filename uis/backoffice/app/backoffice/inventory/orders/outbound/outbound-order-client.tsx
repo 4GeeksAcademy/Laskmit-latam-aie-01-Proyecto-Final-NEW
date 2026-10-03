@@ -6,6 +6,7 @@ import { getProducts, getProduct, createOutboundOrder } from "../../../../../lib
 import { getErrorMessage } from "../../../../../lib/api-client";
 import type { InventoryProduct } from "../../../../../lib/inventory";
 import styles from "../../inventory.module.css";
+import { track } from "../../../../../lib/telemetry";
 
 export function OutboundOrderClient() {
   const searchParams = useSearchParams();
@@ -123,7 +124,50 @@ export function OutboundOrderClient() {
 
     try {
       const result = await createOutboundOrder(body);
-      const productName = products.find((p) => p.id === result.asset_id)?.name ?? `ID ${result.asset_id}`;
+      const product = products.find((p) => p.id === result.asset_id);
+      const productName = product?.name ?? `ID ${result.asset_id}`;
+
+      // Emitir evento de telemetría: outbound_order_created
+      track("outbound_order_created", {
+        office: office.toLowerCase(),
+        product_id: result.asset_id,
+        product_category: product?.category ?? "unknown",
+        programme_id: "", // se obtendría del producto si estuviera disponible en la UI
+        quantity: result.quantity,
+        currency: office.toLowerCase() === "miami" ? "USD" : "EUR",
+        exit_type: result.exit_type,
+        assigned_to: result.assigned_to,
+        order_id: result.id,
+      });
+
+      // Verificar si el nuevo stock cae por debajo de umbral (5 unidades)
+      if (product && (product.current_stock - result.quantity) <= 5) {
+        track("stock_threshold_triggered", {
+          office: office.toLowerCase(),
+          product_id: result.asset_id,
+          product_category: product?.category ?? "unknown",
+          programme_id: "",
+          quantity: result.quantity,
+          currency: office.toLowerCase() === "miami" ? "USD" : "EUR",
+          threshold_minimum: 5,
+          current_stock: Math.max(0, product.current_stock - result.quantity),
+        });
+      }
+
+      // Si la cantidad supera el stock disponible, emitir insufficient_stock_rejected
+      // (esto ocurre del lado del backend, pero podemos anticiparlo en el frontend)
+      if (currentStock !== null && Number(quantity) > currentStock) {
+        track("insufficient_stock_rejected", {
+          office: office.toLowerCase(),
+          product_id: result.asset_id,
+          product_category: product?.category ?? "unknown",
+          programme_id: "",
+          quantity_requested: Number(quantity),
+          quantity_available: currentStock,
+          currency: office.toLowerCase() === "miami" ? "USD" : "EUR",
+        });
+      }
+
       setSubmitSuccess(
         `Orden de salida registrada correctamente: ${result.quantity} unidades de "${productName}".`,
       );
