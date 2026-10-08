@@ -1,29 +1,28 @@
-"""Router de telemetría — endpoint stub para validación de eventos.
-
-Endpoint temporal POST /telemetry/events que valida el formato del payload
-y responde 200 sin persistir nada. En la Fase 3 será reemplazado por la
-implementación real con almacenamiento en Supabase.
-
-El modelo Pydantic TelemetryEvent se defne aquí y se reutilizará sin cambios
-en la Fase 3 — refleja el envelope estándar del plan de telemetría.
-"""
+"""Recepción y almacenamiento de lotes de telemetría."""
 from __future__ import annotations
 
+import json
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from dotenv import load_dotenv
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Body, HTTPException
+from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy import text
+
+try:
+    from services.api.database import engine as supabase_engine
+except ModuleNotFoundError:
+    from database import engine as supabase_engine  # type: ignore[no-redef]
 
 load_dotenv()
 
 logger = logging.getLogger("api.telemetry")
 
-# ── Variable de entorno: establecer el patrón desde el inicio ─────
-# Aunque el stub no redirige tráfico, la variable se declara aquí para
-# que en la Fase 3 baste con cambiar el valor sin tocar el código.
+TELEMETRY_SERVICE = os.getenv("TELEMETRY_SERVICE", "nexova-backoffice")
 TELEMETRY_ENDPOINT: str = os.getenv("TELEMETRY_ENDPOINT", "")  # noqa: F841
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
@@ -87,33 +86,94 @@ class TelemetryBatch(BaseModel):
 
 
 class TelemetryBatchResponse(BaseModel):
-    """Respuesta del endpoint stub."""
+    """Resumen de aceptación y persistencia del lote."""
     received: int
+    stored: int
+    rejected: int
 
 
-# ── Endpoint stub ──────────────────────────────────────────────────
+def _event_to_row(raw: Any) -> dict[str, Any]:
+    event = TelemetryEvent.model_validate(raw)
+    timestamp = datetime.fromisoformat(event.timestamp.replace("Z", "+00:00"))
+    if timestamp.tzinfo is None:
+        raise ValueError("timestamp must include a timezone")
+
+    user_id = event.userId
+    if user_id is not None and "@" in user_id:
+        user_id = None
+
+    return {
+        "event_id": UUID(event.eventId),
+        "timestamp": timestamp.astimezone(timezone.utc),
+        "session_id": UUID(event.sessionId) if event.sessionId else None,
+        "user_id": user_id,
+        "event_type": event.event_type,
+        "schema_version": event.schemaVersion,
+        "request_id": UUID(event.requestId),
+        "tags": json.dumps(event.properties),
+        "service": TELEMETRY_SERVICE,
+    }
+
+
+def _bulk_insert(rows: list[dict[str, Any]]) -> int:
+    if supabase_engine is None:
+        raise RuntimeError("Telemetry database is not configured")
+
+    columns = (
+        "event_id", "timestamp", "session_id", "user_id", "event_type",
+        "schema_version", "request_id", "tags", "service",
+    )
+    bind_rows: list[str] = []
+    parameters: dict[str, Any] = {}
+    for row_index, row in enumerate(rows):
+        binds = []
+        for column in columns:
+            bind_name = f"{column}_{row_index}"
+            binds.append(f"CAST(:{bind_name} AS JSONB)" if column == "tags" else f":{bind_name}")
+            parameters[bind_name] = row[column]
+        bind_rows.append(f"({', '.join(binds)})")
+
+    statement = text(
+        "INSERT INTO public.telemetry_events "
+        f"({', '.join(columns)}) VALUES {', '.join(bind_rows)}"
+    )
+    with supabase_engine.begin() as connection:
+        result = connection.execute(statement, parameters)
+
+    rowcount = result.rowcount
+    return rowcount if rowcount is not None and rowcount >= 0 else len(rows)
 
 
 @router.post("/events", response_model=TelemetryBatchResponse)
-async def receive_events(payload: TelemetryBatch):
-    """Recibe un lote de eventos de telemetría, valida el formato y responde 200.
+async def receive_events(payload: dict[str, Any] = Body(...)):
+    raw_events = payload.get("events")
+    if not isinstance(raw_events, list):
+        raise HTTPException(status_code=422, detail="'events' must be an array")
 
-    Este es un endpoint stub temporal. No persiste nada — solo registra
-    en log la cantidad de eventos recibidos y sus event_type, y devuelve
-    {'received': N}.
+    rows: list[dict[str, Any]] = []
+    for raw_event in raw_events:
+        try:
+            rows.append(_event_to_row(raw_event))
+        except (ValidationError, ValueError, TypeError):
+            continue
 
-    En la Fase 3 este mismo endpoint (con el mismo modelo TelemetryEvent)
-    se reemplazará por la implementación real con validación completa y
-    persistencia en Supabase. El frontend no necesitará ningún cambio
-    porque la URL se lee de NEXT_PUBLIC_TELEMETRY_ENDPOINT.
-    """
-    count = len(payload.events)
-    event_types = [e.event_type for e in payload.events]
+    rejected = len(raw_events) - len(rows)
+    if rows:
+        try:
+            from starlette.concurrency import run_in_threadpool
+
+            stored = await run_in_threadpool(_bulk_insert, rows)
+        except Exception as error:
+            logger.exception("Failed to persist telemetry batch")
+            raise HTTPException(status_code=503, detail="Telemetry storage unavailable") from error
+    else:
+        stored = 0
 
     logger.info(
-        "Telemetry batch received: %d event(s) — %s",
-        count,
-        ", ".join(event_types),
+        "Telemetry batch processed: received=%d stored=%d rejected=%d",
+        len(raw_events),
+        stored,
+        rejected,
     )
 
-    return TelemetryBatchResponse(received=count)
+    return TelemetryBatchResponse(received=len(raw_events), stored=stored, rejected=rejected)
